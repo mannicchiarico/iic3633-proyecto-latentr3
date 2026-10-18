@@ -8,7 +8,10 @@ test_file=$(ls -f data/${tdir}/${category}*11.csv)
 info_file=$(ls -f data/info/${category}*.txt)
 echo ${train_file} ${test_fie} ${info_file} ${eval_file}
 port=$((RANDOM % 5000 + 10000))
-export CUDA_VISIBLE_DEVICES=0
+GPUS=${GPUS:-0}
+IFS=',' read -ra array <<< "${GPUS}"
+nn=${#array[@]}
+export CUDA_VISIBLE_DEVICES=${GPUS}
 task_name="latent_${category}"
 out=./output_dir/${category}/latent
 mkdir -p ${out}
@@ -16,18 +19,13 @@ mkdir -p ${out}
 # Replace with your actual base model path
 # for example: Qwen/Qwen2.5-1.5B
 BASE_MODEL=Qwen/Qwen2.5-1.5B
-torchrun --nproc_per_node=1 --nnodes=1 --master_port=$port \
+torchrun --nproc_per_node=${nn} --nnodes=1 --master_port=$port \
     src/latent/latent_attention_train.py \
     --base_model $BASE_MODEL \
     --train_file ${train_file} --eval_file ${eval_file} \
     --output_dir ${out} --category ${category} --sample -1 \
     > >(tee -a ${out}/${task_name}.log) 2> >(tee -a ${out}/${task_name}.err >&2)
 
-# available gpu
-array=(0)
-
-# total number of gpus
-nn=1
 mkdir -p ./output_dir/${category}_base
 python src/utils/split.py --input_path $test_file \
         --output_path ./output_dir/${category}_base --nn ${nn}

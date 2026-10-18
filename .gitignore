@@ -2,3 +2,4 @@
 /raw
 /.venv-rocm
 __pycache__/
+/.venv-cuda
