@@ -1,6 +1,6 @@
 #!/bin/bash
-array=(2 4)
-nn=2
+array=(0)
+nn=1
 
 for category in "CDs_and_Vinyl"; do
     path_to_data=data

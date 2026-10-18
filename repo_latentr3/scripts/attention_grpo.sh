@@ -8,12 +8,12 @@ for category in "Toys_and_Games"; do
     test_file=$(ls -f ${path_to_data}/test/${category}*11.csv)
     info_file=$(ls -f ${path_to_data}/info/${category}*.txt)
     for lr in 1e-4 1e-5 5e-4 5e-5; do
-        export CUDA_VISIBLE_DEVICES=3,4
+        export CUDA_VISIBLE_DEVICES=0
         task_name=nomul_attn_lr_${lr}
         base_model=output_dir/${category}/latent
         out=./output_dir/${category}/${task_name}
         mkdir -p $out
-        torchrun --nnodes=1 --nproc_per_node=2 --master_port=$((RANDOM % 9999 + 10000)) \
+        torchrun --nnodes=1 --nproc_per_node=1 --master_port=$((RANDOM % 9999 + 10000)) \
             src/grpo_attention_tuning/train_noise_grpo.py --category $category \
             --num_generations 8 --sample -1 --num_epochs 1 --info_file $info_file \
             --base_model $base_model --output_dir $out --beta 0.00 \
@@ -23,8 +23,8 @@ for category in "Toys_and_Games"; do
             > >(tee -a ${out}/${task_name}.log) 2> >(tee -a ${out}/${task_name}.err >&2)
 
         # available gpu
-        array=(3 4)
-        nn=2
+        array=(0)
+        nn=1
         model_ckpt=${out}
         mkdir -p ./output_dir/${category}_base
         python src/utils/split.py --input_path $test_file \
