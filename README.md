@@ -46,21 +46,15 @@ conda env create -n your_env -f repo_latentr3/environment.yaml
 
 ### 1. `notebooks/datos.ipynb` (opcional)
 
-Debe ejecutarse con la **raíz del repositorio** como directorio de trabajo, porque las rutas se construyen desde `os.path.abspath(".")`:
-
-```bash
-jupyter notebook --notebook-dir=. notebooks/datos.ipynb
-```
+Puede ejecutarse desde `notebooks/` (por defecto en Jupyter y VS Code) o desde la raíz del repositorio. Si se vuelve a ejecutar, conviene reiniciar el kernel antes, porque la última celda cambia el directorio de trabajo a `repo_latentr3/`.
 
 Qué hace:
 
 1. Clona el repositorio de LatentR3 en `repo_latentr3/` si no existe e importa `gao` desde `process.py`.
 2. Descarga las reseñas y la metadata de las cuatro categorías en `raw/` (varios GB; se omiten los archivos que ya existen).
-3. Filtra las reseñas desde 2010 y llama a `gao` para cada categoría, con la zona horaria fijada en UTC.
+3. Filtra las reseñas desde 2010 y llama a `gao` para cada categoría, con la zona horaria fijada en UTC. `gao` parte con la ventana 2017-10 a 2018-11 y retrocede el inicio de a 3 meses hasta tener al menos 5000 ítems.
 
-Output esperado: logs de `gao` con el número de usuarios, ítems, reseñas y la densidad de cada categoría, y los archivos `info/*.txt` y `train|valid|test/*.csv` escritos en `repo_latentr3/data/`.
-
-> **Nota:** `gao` se llama con su ventana de tiempo por defecto (2017-10 a 2018-11), así que los archivos generados llevan el sufijo `_5_2017-10-2018-11`. Los archivos incluidos en el repositorio usan otras ventanas por categoría (por ejemplo, `Video_Games_5_2015-4-2018-11`). Si se generan archivos nuevos, conviene dejar un solo archivo por categoría en cada carpeta, porque `modelos_exploracion.ipynb` carga todos los archivos que encuentra.
+Output esperado: logs de `gao` con el número de usuarios, ítems, reseñas y la densidad de cada categoría, y los archivos `info/*.txt` y `train|valid|test/*.csv` escritos en `repo_latentr3/data/`. Los nombres de archivo llevan la ventana final de cada categoría (por ejemplo, `Video_Games_5_2015-4-2018-11.csv`), así que coinciden con los ya incluidos y se sobrescriben.
 
 ### 2. `notebooks/modelos_exploracion.ipynb`
 
@@ -69,4 +63,4 @@ Funciona tanto en local como en Google Colab:
 - **Local:** se ejecuta con `notebooks/` como directorio de trabajo, que es el comportamiento por defecto de Jupyter y de VS Code. Lee los datos desde `../repo_latentr3/data`. Las celdas de Google Drive y del zip no hacen nada.
 - **Colab:** monta Google Drive, descomprime `IIC3633/data_amazon_2018.zip` en `/content/` y lee los datos desde `data_amazon_2018/`.
 
-> **Nota:** Esta documentación fue realizada por Claude. [Ver prompt y respuesta](https://claude.ai/artifact/Mskz7UPkqXJ9g2GdCSh9pk).
+> **Nota:** Esta documentación fue realizada por Claude, aunque se realizaron correcciones. [Ver prompt y respuesta original](https://claude.ai/artifact/Mskz7UPkqXJ9g2GdCSh9pk).
