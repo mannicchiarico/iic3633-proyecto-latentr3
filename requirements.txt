@@ -1,0 +1,13 @@
+transformers==4.51.3
+trl==0.16.1
+accelerate==1.6.0
+datasets
+fire
+loguru
+tqdm
+pandas
+numpy
+matplotlib
+seaborn
+jupyter
+ipykernel

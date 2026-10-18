@@ -1,6 +1,7 @@
 #!/bin/bash
-array=(0)
-nn=1
+GPUS=${GPUS:-0}
+IFS=',' read -ra array <<< "${GPUS}"
+nn=${#array[@]}
 
 for category in "CDs_and_Vinyl"; do
     path_to_data=data
