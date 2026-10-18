@@ -1,2 +1,4 @@
 /.venv
 /raw
+/.venv-rocm
+__pycache__/
