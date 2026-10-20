@@ -3,3 +3,5 @@
 /.venv-rocm
 __pycache__/
 /.venv-cuda
+/notebooks/baseline_gru4rec_experimento.ipynb
+/GRU4Rec_PyTorch_Official
