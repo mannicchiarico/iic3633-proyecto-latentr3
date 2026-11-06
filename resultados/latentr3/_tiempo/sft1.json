@@ -1,0 +1,10 @@
+{
+ "micro_batch": 1,
+ "micro_pasos": 128,
+ "s_micro_mediana": 0.17278587818145752,
+ "s_ultimo_micro_mas_optimizador": 0.37459683418273926,
+ "s_por_paso": 22.318403363227844,
+ "s_valid_por_fila": 0.05107301101088524,
+ "pico_gb_paso1_sin_estados_adam": 11.702149868011475,
+ "tokens_por_fila": 157.640625
+}

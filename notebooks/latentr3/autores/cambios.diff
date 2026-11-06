@@ -1,0 +1,181 @@
+--- repo_latentr3/src/grpo_attention_tuning/model.py
++++ autores/model.py
+@@ -8,7 +8,8 @@
+ from transformers import Qwen2ForCausalLM
+ from transformers.models.qwen2.modeling_qwen2 import apply_rotary_pos_emb
+ 
+-from noisy_layer import replace_with_noisy_linear
++# PARCHE P1: se quita `from noisy_layer import replace_with_noisy_linear`: el módulo no existe en el repo y solo
++# lo usa código comentado (NoisyLatentModel, abajo)
+ 
+ class VanillaRoPE(nn.Module):
+     def __init__(self, hidden_size, device=None):
+@@ -111,14 +112,24 @@
+         Q_selected = Q[torch.arange(batch_size), indices].unsqueeze(1)
+ 
+         # 计算注意力分数 [batch_size, 1, seq_len]
+-        attn_scores = torch.matmul(Q_selected, K.transpose(-2, -1)) * self.scale_score
++        # PARCHE P5: con gradiente, los dos productos de atención se calculan como producto elemento a elemento y suma
++        # en fp32 (lo mismo que la GEMM, salvo el orden de la suma). Así el backward no tiene multiplicaciones con k=1,
++        # que en hipBLASLt (ROCm 7.14, gfx1201) leen fuera del buffer y matan el proceso. Sin gradiente queda el original
++        if torch.is_grad_enabled():
++            attn_scores = (Q_selected.float() * K.to(Q_selected.dtype).float()).sum(-1).unsqueeze(1).to(Q_selected.dtype) * self.scale_score
++        else:
++            attn_scores = torch.matmul(Q_selected, K.transpose(-2, -1)) * self.scale_score
+ 
+         # 应用attention_mask（形状需匹配为[batch_size, 1, seq_len]）
+         attn_scores += attention_mask.unsqueeze(1)  # 广播至[batch_size, 1, seq_len]
+ 
+         # 计算注意力权重与输出
+         attn_weights = F.softmax(attn_scores, dim=-1)
+-        output_selected = torch.matmul(attn_weights, V)  # [batch_size, 1, embed_dim]
++        if torch.is_grad_enabled():   # PARCHE P5
++            # Los pesos se redondean al dtype de V antes de multiplicar, como hace matmul bajo autocast
++            output_selected = (attn_weights.to(V.dtype).float().transpose(1, 2) * V.float()).sum(1, keepdim=True).to(V.dtype)
++        else:
++            output_selected = torch.matmul(attn_weights, V)  # [batch_size, 1, embed_dim]
+         output = output_selected.squeeze(1) # [batch_size, embed_dim]
+         return output
+ 
+@@ -131,7 +142,10 @@
+         self.attention = SelfAttentionLayer(config.hidden_size)
+ 
+     def generate_embs(self, input_ids, attention_mask):
+-        output_mid = super().forward(input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=True)
++        # PARCHE P2: logits_to_keep=1. Este pase solo usa hidden_states[-1]; los logits de todo el vocabulario se
++        # descartaban y con lotes de 24 x 10 beams no caben en 16 GB. Los estados ocultos no cambian
++        output_mid = super().forward(input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=True,
++                                     logits_to_keep=1)
+         # generate embeddings
+         thought_ids = self.model.embed_tokens.num_embeddings - 1  # thought id flag
+         where_thought_ids = torch.nonzero(input_ids == thought_ids)
+--- repo_latentr3/src/grpo_attention_tuning/grpo_trainer.py
++++ autores/grpo_trainer.py
+@@ -31,8 +31,10 @@
+         super().__init__(*args, **kwargs)
+         data_collator = DataCollatorForSeq2Seq(self.processing_class, pad_to_multiple_of=8, return_tensors="pt", padding=True)
+         def data_collate_fn(batch):
+-            new_batch = data_collator(batch)
+-            return new_batch
++            # PARCHE P3 (2 GPUs simuladas): cada grupo de num_generations filas se colaciona solo, como lo hacía cada
++            # GPU de los autores (micro-batch 8 = 1 grupo por GPU). Así no hay padding entre grupos
++            n = self.num_generations
++            return {"grupos": [data_collator(batch[i:i + n]) for i in range(0, len(batch), n)]}
+         self.data_collator = data_collate_fn
+         self.prefix_allowed_tokens_fn = prefix_allowed_tokens_fn
+         self.generation_config = transformers.GenerationConfig(
+@@ -100,9 +102,46 @@
+         return (-per_token_logps.detach().clone().sum(dim=-1)/logits_to_keep).exp()
+ 
+     def _generate_and_score_completions(self, inputs: dict[str, Union[torch.Tensor, Any]]) -> dict[str, Union[torch.Tensor, Any]]:
++        # PARCHE P3 (2 GPUs simuladas): el micro-batch trae un grupo por GPU simulada. Cada grupo se puntúa con el
++        # código original (_puntuar_grupo, L105-157 sin cambios); las recompensas se concatenan en el orden de las
++        # GPUs, que es lo que hacía gather(), y la ventaja se calcula con las líneas originales sobre todos los grupos
+         device = self.accelerator.device
+-
+-        prompt_inputs = super(GRPOTrainer, self)._prepare_inputs(inputs)
++        grupos = super(GRPOTrainer, self)._prepare_inputs(inputs)["grupos"]
++        salidas, recompensas = [], []
++        for prompt_inputs in grupos:
++            salida, rewards_per_func = self._puntuar_grupo(prompt_inputs, device)
++            salidas.append(salida)
++            recompensas.append(rewards_per_func)
++        rewards_per_func = torch.cat(recompensas)   # = gather(rewards_per_func) con una GPU por grupo
++
++        # Desde aquí, las líneas originales (L162-176) sin cambios
++        # rewards.view(-1, self.num_generations)
++        # Apply weights to each reward function's output and sum
++        rewards = (rewards_per_func * self.reward_weights.to(device).unsqueeze(0)).sum(dim=1)
++        # Compute grouped-wise rewards
++        mean_grouped_rewards = rewards.view(-1, self.num_generations).mean(dim=1)
++        std_grouped_rewards = rewards.view(-1, self.num_generations).std(dim=1)
++
++        # Normalize the rewards to compute the advantages
++        mean_grouped_rewards = mean_grouped_rewards.repeat_interleave(self.num_generations, dim=0)
++        std_grouped_rewards = std_grouped_rewards.repeat_interleave(self.num_generations, dim=0)
++        temp_rewards = rewards.clone().view(-1, self.num_generations)
++        xx = temp_rewards[:, 0].unsqueeze(1).expand_as(temp_rewards).reshape(-1)
++        xx = swap_adjacent_blocks(xx, self.num_generations)
++        advantages = rewards - xx.mean()
++        advantages = advantages / (torch.norm(advantages) + 1e-6)
++        # Cada GPU simulada se queda con su parte, como process_slice
++        n = self.num_generations
++        for i, salida in enumerate(salidas):
++            salida["advantages"] = advantages[i * n:(i + 1) * n]
++        # Registro (no afecta el cálculo)
++        mode = "eval" if self.control.should_evaluate else "train"
++        self._metrics[mode]["recompensa"].append(rewards.mean().item())
++        self._metrics[mode]["recompensa_s1"].append(temp_rewards[:, 0].mean().item())
++        return {"grupos": salidas}
++
++    def _puntuar_grupo(self, prompt_inputs, device):
++        # PARCHE P3: cuerpo original de _generate_and_score_completions (L105-157) para un grupo, hasta antes de gather
+         # 实际上这里是一整句话 不只是 prompt
+         prompt_completion_ids, prompt_completion_mask = prompt_inputs["input_ids"], prompt_inputs["attention_mask"]
+         labels = prompt_inputs["labels"]
+@@ -156,32 +195,7 @@
+             output_reward_func_test = -(-old_per_token_logps.clone().sum(dim=-1)/labels_length).exp().to(torch.float32)
+             rewards_per_func[:, i] = output_reward_func_test
+ 
+-        # Gather the reward per function: this part is crucial, because the rewards are normalized per group and the
+-        # completions may be distributed across processes
+-        rewards_per_func = gather(rewards_per_func)
+-        # rewards.view(-1, self.num_generations)
+-        # Apply weights to each reward function's output and sum
+-        rewards = (rewards_per_func * self.reward_weights.to(device).unsqueeze(0)).sum(dim=1)
+-        # Compute grouped-wise rewards
+-        mean_grouped_rewards = rewards.view(-1, self.num_generations).mean(dim=1)
+-        std_grouped_rewards = rewards.view(-1, self.num_generations).std(dim=1)
+-
+-        # Normalize the rewards to compute the advantages
+-        mean_grouped_rewards = mean_grouped_rewards.repeat_interleave(self.num_generations, dim=0)
+-        std_grouped_rewards = std_grouped_rewards.repeat_interleave(self.num_generations, dim=0)
+-        temp_rewards = rewards.clone().view(-1, self.num_generations)
+-        xx = temp_rewards[:, 0].unsqueeze(1).expand_as(temp_rewards).reshape(-1)
+-        xx = swap_adjacent_blocks(xx, self.num_generations)
+-        advantages = rewards - xx.mean()
+-        advantages = advantages / (torch.norm(advantages) + 1e-6)
+-        # advantages = (rewards - mean_grouped_rewards) / (std_grouped_rewards + 1e-4)
+-        # Slice to keep only the local part of the data
+-        process_slice = slice(
+-            self.accelerator.process_index * len(prompts),
+-            (self.accelerator.process_index + 1) * len(prompts),
+-        )
+-        advantages = advantages[process_slice]
+-
++        # PARCHE P3: aquí iban gather, la ventaja y process_slice; ahora están en _generate_and_score_completions
+         return {
+             "prompt_ids": prompt_ids,
+             "prompt_mask": prompt_mask,
+@@ -189,11 +203,28 @@
+             "completion_mask": completion_mask,
+             "old_per_token_logps": old_per_token_logps,
+             "ref_per_token_logps": ref_per_token_logps,
+-            "advantages": advantages,
+             "original_embeds": original_embeds,
+             "noise": noise,
+-        }
+-
++        }, rewards_per_func
++
++
++    def training_step(self, model, inputs, num_items_in_batch=None):
++        # PARCHE P3: backward de cada grupo por separado con el compute_loss original. Con 2 GPUs, cada una dividía su
++        # pérdida por gradient_accumulation_steps y DDP promediaba los gradientes; aquí cada grupo se divide además
++        # por el número de grupos, así que el gradiente es el mismo. La memoria máxima es la de un solo grupo
++        model.train()
++        if hasattr(self.optimizer, "train") and callable(self.optimizer.train):
++            self.optimizer.train()
++        grupos = self._prepare_inputs(inputs)["grupos"]
++        total = 0.0
++        for grupo in grupos:
++            with self.compute_loss_context_manager():
++                loss = self.compute_loss(model, grupo)
++            loss = loss / (len(grupos) * self.args.gradient_accumulation_steps)
++            self.accelerator.backward(loss)
++            total = total + loss.detach()
++            del loss
++        return total
+ 
+     def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+         if return_outputs:

@@ -1,0 +1,13 @@
+{
+ "s_por_paso": [
+  12.619049072265625,
+  9.349539041519165,
+  9.45531177520752
+ ],
+ "s_por_paso_mediana": 9.402425408363342,
+ "pico_gb": 7.818919658660889,
+ "parametros_entrenables": 7082496,
+ "micro_batch": 16,
+ "acumulacion": 16,
+ "tokens_por_fila": 157.640625
+}

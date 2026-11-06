@@ -1,0 +1,7 @@
+{
+ "filas": 6738,
+ "segundos": 1724.1821973323822,
+ "batch_size": 24,
+ "length_penalty": 1.0,
+ "memoria_max_gb": 9.541008949279785
+}

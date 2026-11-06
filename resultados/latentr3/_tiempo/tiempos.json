@@ -1,0 +1,24 @@
+{
+ "categoria": "Toys_and_Games",
+ "gpu": "AMD Radeon RX 9070 XT",
+ "torch": "2.14.1+rocm7.14",
+ "sft": {
+  "error": "sin memoria: CUDA out of memory. Tried to allocate 28.00 MiB. GPU 0 has a total capacity of 15.92 GiB of which 0 bytes is free. Of the allocated memory 14.13 GiB is allocated by PyTorch, and 806.31 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PY",
+  "traceback": "6-2/Sistemas Recomendadores/Proyecto/iic3633-proyecto-latentr3/notebooks/latentr3/latentr3.py\", line 265, in _tiempo_sft\n    pasos_s, memoria = _medir_trainer(trainer)\n                       ^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/run/host/var/home/maurice/Documents/University/2026-2/Sistemas Recomendadores/Proyecto/iic3633-proyecto-latentr3/notebooks/latentr3/latentr3.py\", line 229, in _medir_trainer\n    trainer.train()\n  File \"/run/host/var/home/maurice/Documents/University/2026-2/Sistemas Recomendadores/Proyecto/iic3633-proyecto-latentr3/.venv-rocm/lib/python3.12/site-packages/transformers/trainer.py\", line 2245, in train\n    return inner_training_loop(\n           ^^^^^^^^^^^^^^^^^^^^\n  File \"/run/host/var/home/maurice/Documents/University/2026-2/Sistemas Recomendadores/Proyecto/iic3633-proyecto-latentr3/.venv-rocm/lib/python3.12/site-packages/transformers/trainer.py\", line 2560, in _inner_training_loop\n    tr_loss_step = self.training_step(model, inputs, num_items_in_batch)\n                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/run/host/var/home/maurice/Documents/University/2026-2/Sistemas Recomendadores/Proyecto/iic3633-proyecto-latentr3/.venv-rocm/lib/python3.12/site-packages/transformers/trainer.py\", line 3782, in training_step\n    self.accelerator.backward(loss, **kwargs)\n  File \"/run/host/var/home/maurice/Documents/University/2026-2/Sistemas Recomendadores/Proyecto/iic3633-proyecto-latentr3/.venv-rocm/lib/python3.12/site-packages/accelerate/accelerator.py\", line 2454, in backward\n    loss.backward(**kwargs)\n  File \"/run/host/var/home/maurice/Documents/University/2026-2/Sistemas Recomendadores/Proyecto/iic3633-proyecto-latentr3/.venv-rocm/lib/python3.12/site-packages/torch/_tensor.py\", line 623, in backward\n    torch.autograd.backward(\n  File \"/run/host/var/home/maurice/Documents/University/2026-2/Sistemas Recomendadores/Proyecto/iic3633-proyecto-latentr3/.venv-rocm/lib/python3.12/site-packages/torch/autograd/__init__.py\", line 395, in backward\n    _engine_run_backward(\n  File \"/run/host/var/home/maurice/Documents/University/2026-2/Sistemas Recomendadores/Proyecto/iic3633-proyecto-latentr3/.venv-rocm/lib/python3.12/site-packages/torch/autograd/graph.py\", line 1072, in _engine_run_backward\n    return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntorch.OutOfMemoryError: CUDA out of memory. Tried to allocate 28.00 MiB. GPU 0 has a total capacity of 15.92 GiB of which 0 bytes is free. Of the allocated memory 14.13 GiB is allocated by PyTorch, and 806.31 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)\n",
+  "memoria_max_gb": 14.145327091217041
+ },
+ "estimacion": {
+  "CDs_and_Vinyl": {
+   "h total": 0
+  },
+  "Toys_and_Games": {
+   "h total": 0
+  },
+  "Video_Games": {
+   "h total": 0
+  },
+  "Musical_Instruments": {
+   "h total": 0
+  }
+ }
+}

@@ -1,0 +1,17 @@
+{
+ "config": {
+  "metodo": "base",
+  "sample": -1,
+  "filas_por_parte": 256,
+  "modelo": "Qwen/Qwen2.5-1.5B",
+  "length_penalty": 1.0,
+  "num_beams": 10,
+  "max_new_tokens": 128,
+  "batch": 24
+ },
+ "filas": 6738,
+ "segundos": 1749.3090329170227,
+ "segundos_razon": 0.0,
+ "segundos_titulo": 1749.3090329170227,
+ "memoria_max_gb": 9.466790199279785
+}
