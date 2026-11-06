@@ -36,7 +36,7 @@ Fuentes: "paper" cita sección o apéndice; "repo" es el código de los autores 
 | Parámetro | Valor | Fuente |
 |---|---|---|
 | Modelo base | `Qwen/Qwen2.5-1.5B` (base, no Instruct), bf16 | paper, App. B |
-| Token latente | 1 token `<|Thought|>`, id `len(tokenizer)-1` | paper, Sec. 4.2 (N = 1); repo `reasoning_dataset.py:122` |
+| Token latente | 1 token `<\|Thought\|>`, id `len(tokenizer)-1` | paper, Sec. 4.2 (N = 1); repo `reasoning_dataset.py:122` |
 | LatentRATT | Una cabeza d×d con Q, K y V con bias, RoPE base 1000; query = último token del prompt; 3(d²+d) parámetros | el paper no la especifica; repo `layers.py:32-120`; el autor la confirma en el issue #1 |
 | Datos | Los mismos CSV de `repo_latentr3/data/` que los baselines, sin re-split | decisión del proyecto |
 | Prompt | `LatentRDataset` (SFT) = `D3Dataset` (RL), con sus erratas; `cutoff_len` 512 | el paper no lo especifica; repo |
@@ -100,8 +100,8 @@ Celdas 7 a 10 del notebook; corren en CPU, con modelos diminutos (2 capas, dimen
 | # | Qué comprueba |
 |---|---|
 | V1 | sha256 de los originales y de las copias; `cambios.diff` igual al diff actual |
-| V2 | `<|Thought|>` es un solo token con id `len(tokenizer)-1`, última fila tras `resize_token_embeddings`, con los embeddings atados a `lm_head` |
-| V3 | Prompt del SFT = prompt del RL en 200 filas por split (y = prompt de BIGRec + token, si está `DecodingMatters/`); un solo `<|Thought|>` justo después de `### Response: \n`; el prompt no lleva loss |
+| V2 | `<\|Thought\|>` es un solo token con id `len(tokenizer)-1`, última fila tras `resize_token_embeddings`, con los embeddings atados a `lm_head` |
+| V3 | Prompt del SFT = prompt del RL en 200 filas por split (y = prompt de BIGRec + token, si está `DecodingMatters/`); un solo `<\|Thought\|>` justo después de `### Response: \n`; el prompt no lleva loss |
 | V4 | Trie con raíz de 5 tokens; todos los prompts de `test` terminan en ella; los títulos generables son exactamente los del catálogo |
 | V5 | LatentRATT: 3(d²+d) parámetros, el token latente no ve el objetivo, la query es la posición anterior al token, el padding a la izquierda solo cambia el redondeo, P2 no cambia los estados ocultos, P5 da la misma salida y gradientes que la original |
 | V6 | En el RL solo `attention.*` es entrenable y un paso solo cambia esos parámetros |

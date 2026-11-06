@@ -33,8 +33,7 @@ Baseline BIGRec de LatentR3: Qwen2.5-1.5B con ajuste completo, entrenado para es
 | Parámetro | Valor | Fuente |
 |---|---|---|
 | Modelo | `Qwen/Qwen2.5-1.5B` (base), ajuste completo, bf16, sin tokens nuevos | paper, App. B |
-| Prompt | El de LatentR3 sin `<|Thought|>`; igual en tokens, etiquetas y máscara en 200 filas de cada split | medido, celda 8 |
-| Que la Tabla 1 use ese prompt | El paper no publica el prompt de BIGRec | deducción del proyecto (base: el código de LatentR3 deriva del de D3, los papers comparten autores y "w/o Reasoning" = BIGRec) |
+| Prompt | El de LatentR3 sin `<\|Thought\|>`; igual en tokens, etiquetas y máscara en 200 filas de cada split. Medido, celda 8 | Que la Tabla 1 use ese prompt: el paper no publica el prompt de BIGRec, así que es deducción del proyecto (base: el código de LatentR3 deriva del de D3, los papers comparten autores y "w/o Reasoning" = BIGRec) |
 | Loss | Entropía cruzada solo sobre el título y EOS; el prompt lleva -100 | paper, Eq. 4; `D3Dataset` |
 | lr | 3e-4, sin grilla (la grilla del paper es {3e-3, 3e-4, 3e-5}) | decisión del proyecto; lo confirma el autor en el issue #2 del repo de LatentR3 |
 | Batch | 128 efectivo | issue #2 y código de los autores; el paper no lo especifica |
