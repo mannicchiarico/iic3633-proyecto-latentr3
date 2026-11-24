@@ -1,0 +1,49 @@
+{
+ "fecha": "2026-11-24",
+ "categorias": {
+  "CDs_and_Vinyl": {
+   "items": 5841,
+   "con_url_de_imagen": 2991,
+   "sin_url_de_imagen": 2850,
+   "lineas_meta": 516914,
+   "asin_repetidos_en_meta": 755,
+   "titulo_meta_distinto_de_info": 1,
+   "sha256_meta": "40728183a5ff8d141ac60ae4aa0a1f7caf310e46504a9d170369231ce0c84814",
+   "sha256_csv": "34d59df2294bb5a564afb3409080dfd616098d98109f9fe70bae139f74fa4a85",
+   "sha256_info": "45a1181b7da0e3768120db208fcd36a920cca1b3597c6615474a6bdb1019fea4"
+  },
+  "Musical_Instruments": {
+   "items": 5030,
+   "con_url_de_imagen": 3926,
+   "sin_url_de_imagen": 1104,
+   "lineas_meta": 120310,
+   "asin_repetidos_en_meta": 819,
+   "titulo_meta_distinto_de_info": 0,
+   "sha256_meta": "8e3f0dbe4c6c1aa5b32d350aa26072232beb6160ff3c5dadb44bca2c473a8b41",
+   "sha256_csv": "5beb2445bc985551d1963f3b91d9e43b23bef7eee59d6d73a82cd063d64285e5",
+   "sha256_info": "00c081c86c674d01adcbb6393758afa89c81ff551ac1a8c6cb9c89795ca0cce0"
+  },
+  "Toys_and_Games": {
+   "items": 6299,
+   "con_url_de_imagen": 5698,
+   "sin_url_de_imagen": 601,
+   "lineas_meta": 633883,
+   "asin_repetidos_en_meta": 137,
+   "titulo_meta_distinto_de_info": 0,
+   "sha256_meta": "48a91a75f0c365f431d8ffe2d45e7ba2ff4d95c6f6871d5230c4451233e4c38c",
+   "sha256_csv": "2931a7063b7bd26edbf84ca570ebdb62a2715faedeeab07ca7b7f9f8c5a3c390",
+   "sha256_info": "bcc4819ae34a62bb03721d64d2b153fc0d1b02ecb5495ed94b111de8e6152744"
+  },
+  "Video_Games": {
+   "items": 5308,
+   "con_url_de_imagen": 4781,
+   "sin_url_de_imagen": 527,
+   "lineas_meta": 84819,
+   "asin_repetidos_en_meta": 539,
+   "titulo_meta_distinto_de_info": 0,
+   "sha256_meta": "4069e17c7efa33e7574c2e77f1fe0b0c6f2a42a7ac29c4422696d788d8a8e0a6",
+   "sha256_csv": "735c37a85539a9f5994a78afa62ba58b8648cac92654b3f839eb187407c41c44",
+   "sha256_info": "256f42878942a1c48f3dd574539622ece9d8bb2b5edc1eb61e250007749b36a2"
+  }
+ }
+}

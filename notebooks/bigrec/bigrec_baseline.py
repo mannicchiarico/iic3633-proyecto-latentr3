@@ -21,7 +21,7 @@ import contextlib
 import numpy as np
 import torch
 
-from baseline_comun import SEED, buscar_archivo, verificar_sha256, cargar_modulo
+from baseline_comun import SEED, buscar_archivo, verificar_sha256, cargar_modulo, entorno, verificar_gpu
 
 BASE_MODEL = "Qwen/Qwen2.5-1.5B"   # paper, App. B
 # Entrenamiento: latent_attention_train.py L31-35 y L116-139 (= D3 code/train.py L60-64 y L134-156)
@@ -40,6 +40,9 @@ BATCH_GENERACION = 24
 LENGTH_PENALTY = {"bigrec": 1.0,   # latent_attention_eval.py L32
                   "d3": 0.0}       # D3 sin ensemble: evaluate2.sh L8 (sin --guidance_scale, así que sin TFA)
 FILAS_POR_PARTE = 256   # la evaluación se guarda por partes para poder retomarla
+# Precisión de la evaluación: bf16 como los autores. colab/evaluar_bigrec_t4.ipynb la cambia a fp16 en una GPU sin bf16
+# en hardware (T4), lo que es una desviación y queda en registro.json
+DTYPE = torch.bfloat16
 # Palabra de cada categoría en el prompt: latent_attention_train.py L49 (D3 code/train.py L83 es igual, sin yelp)
 CATEGORY_DICT = {"Office_Products": "office products", "Books": "books", "steam": "games",
                  "CDs_and_Vinyl": "musics", "Toys_and_Games": "toys and games", "Video_Games": "video games",
@@ -199,7 +202,7 @@ def entrenar(categoria, base, salida, sample_train=-1, sample_valid=-1, micro_ba
         "micro_batch": micro_batch, "acumulacion": BATCH_SIZE // micro_batch,
         "gradient_checkpointing": checkpointing, "optim": optim,
         "torch": torch.__version__, "transformers": transformers.__version__,
-        "gpu": torch.cuda.get_device_name(0),
+        "gpu": torch.cuda.get_device_name(0), "entorno": entorno(),
         "log_history": trainer.state.log_history,
     }
     with open(os.path.join(salida, "entrenamiento.json"), "w") as f:   # se escribe al final: marca el fin
@@ -266,7 +269,7 @@ def generar(modelo, tokenizer, encodings, trie, length_penalty, num_beams=NUM_BE
 
 def cargar_modelo(dir_modelo, tokenizer):
     from transformers import AutoModelForCausalLM
-    modelo = AutoModelForCausalLM.from_pretrained(dir_modelo, torch_dtype=torch.bfloat16).to(device)
+    modelo = AutoModelForCausalLM.from_pretrained(dir_modelo, torch_dtype=DTYPE).to(device)
     modelo.config.pad_token_id = modelo.config.eos_token_id = tokenizer.eos_token_id   # eval L60-61
     modelo.config.bos_token_id = tokenizer.bos_token_id
     modelo.config.use_cache = True   # se guardó en False para entrenar; solo cambia la velocidad
@@ -286,6 +289,9 @@ def evaluar_categoria(categoria, base, salida, variante="bigrec", batch_size=BAT
     if os.path.isfile(final):
         print(f"{categoria} ({carpeta or variante}): ya evaluado en {final}; se salta.")
         return final
+    etapa = f"{categoria} ({carpeta or variante})"
+    # Solo en Colab: se detiene si no hay GPU e imprime la configuración efectiva
+    verificar_gpu(etapa, lote=batch_size, length_penalty=LENGTH_PENALTY[variante], dtype=str(DTYPE))
     os.makedirs(dir_pred, exist_ok=True)
     tokenizer = cargar_tokenizer(dir_modelo)
     tokenizer.pad_token, tokenizer.pad_token_id = tokenizer.eos_token, tokenizer.eos_token_id   # eval L51-53
@@ -295,10 +301,15 @@ def evaluar_categoria(categoria, base, salida, variante="bigrec", batch_size=BAT
     filas = test.get_all()
     trie = construir_trie(buscar_archivo(base, "info", categoria), tokenizer)
     ruta_registro = os.path.join(dir_pred, "registro.json")
-    registro = {"filas": 0, "segundos": 0.0, "batch_size": batch_size, "length_penalty": LENGTH_PENALTY[variante]}
+    registro = {"filas": 0, "segundos": 0.0, "batch_size": batch_size, "length_penalty": LENGTH_PENALTY[variante],
+                "dtype": str(DTYPE), "entornos": []}
     if os.path.isfile(ruta_registro):
         with open(ruta_registro) as f:
             registro = json.load(f)
+        # Una evaluación a medias no se retoma con otra precisión: mezclaría partes en bf16 y en fp16
+        if registro.get("dtype", str(torch.bfloat16)) != str(DTYPE):
+            raise ValueError(f"{dir_pred} se empezó con {registro.get('dtype', str(torch.bfloat16))} y ahora DTYPE es "
+                             f"{DTYPE}; borrar la carpeta o volver a la precisión original.")
 
     modelo = None
     n_partes = math.ceil(len(encodings) / filas_por_parte)
@@ -308,7 +319,10 @@ def evaluar_categoria(categoria, base, salida, variante="bigrec", batch_size=BAT
             continue
         if modelo is None:
             modelo = cargar_modelo(dir_modelo, tokenizer)
+            verificar_gpu(etapa, modelo=modelo)   # solo en Colab
             torch.cuda.reset_peak_memory_stats()
+            # GPU y versiones de cada sesión que genera partes (una evaluación puede retomarse en otra sesión)
+            registro.setdefault("entornos", []).append({"desde_parte": p, **entorno()})
         ini, fin = p * filas_por_parte, min((p + 1) * filas_por_parte, len(encodings))
         inicio = time.time()
         predicciones = []

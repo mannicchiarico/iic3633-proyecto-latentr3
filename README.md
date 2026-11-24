@@ -11,11 +11,14 @@ El repositorio contiene los notebooks, el código de los autores, el código ada
 | GRU4Rec | Corrido en las 4 categorías, salvo CE todas las posiciones | [notebooks/gru4rec/README.md](notebooks/gru4rec/README.md) |
 | SASRec | Corrido en las 4 categorías | [notebooks/sasrec/README.md](notebooks/sasrec/README.md) |
 | Caser | Corrido en las 4 categorías | [notebooks/caser/README.md](notebooks/caser/README.md) |
-| BIGRec | Solo Toys_and_Games | [notebooks/bigrec/README.md](notebooks/bigrec/README.md) |
-| D3 | Solo Toys_and_Games | [notebooks/d3/README.md](notebooks/d3/README.md) |
+| BIGRec | Solo Toys_and_Games; Games e Instruments se entrenan en local y se evalúan en Colab | [notebooks/bigrec/README.md](notebooks/bigrec/README.md) |
+| D3 | Solo Toys_and_Games; Games e Instruments se evalúan en Colab | [notebooks/d3/README.md](notebooks/d3/README.md) |
 | Base | Corrido en las 4 categorías | [notebooks/base_cot/README.md](notebooks/base_cot/README.md) |
 | COT | Solo Toys_and_Games | [notebooks/base_cot/README.md](notebooks/base_cot/README.md) |
-| LatentR3 | Implementado, sin entrenamiento completo; solo hay una prueba de tiempo en Toys_and_Games | [notebooks/latentr3/README.md](notebooks/latentr3/README.md) |
+| LatentR3 | Implementado, sin entrenamiento completo; solo hay una prueba de tiempo en Toys_and_Games. Alcance: Toys y CDs | [notebooks/latentr3/README.md](notebooks/latentr3/README.md) |
+| Multimodal (SASRec + SigLIP) | Implementado; solo está hecha la extracción de URLs de imágenes | [notebooks/multimodal/README.md](notebooks/multimodal/README.md) |
+
+Las tareas que corren en Colab gratis (evaluación de BIGRec/D3 y la parte multimodal) están en [colab/README.md](colab/README.md).
 
 Los protocolos y decisiones comunes de los baselines tradicionales están en [notebooks/README.md](notebooks/README.md).
 
@@ -23,6 +26,7 @@ Los protocolos y decisiones comunes de los baselines tradicionales están en [no
 
 ```plaintext
 .
+├── colab/           Notebooks y scripts para correr en Colab gratis (evaluación BIGRec/D3, exportar e importar resultados)
 ├── docs/
 │   └── 12149_Reinforced_Latent_Reason.pdf   Paper de LatentR3
 ├── notebooks/
@@ -32,6 +36,7 @@ Los protocolos y decisiones comunes de los baselines tradicionales están en [no
 │   ├── modelos_exploracion.ipynb   Análisis exploratorio (Random, MostPop, LastItem)
 │   ├── gru4rec/, sasrec/, caser/, bigrec/, d3/   Un baseline por carpeta: notebook, .py y README
 │   ├── base_cot/                   Baselines Base y COT (Qwen2.5-1.5B sin ajustar)
+│   ├── multimodal/                 Cobertura de imágenes, embeddings SigLIP y SASRec + SigLIP
 │   └── latentr3/                   LatentR3 completo (SFT + LR-GRPO) en 1 GPU de 16 GB
 │       └── autores/                Copia parcheada del código de los autores
 ├── resultados/      Copias versionadas de los JSON de métricas, tiempos y predicciones finales
@@ -53,9 +58,9 @@ Se clonan en la raíz del repositorio y no se versionan. Los notebooks comprueba
 | Carpeta | Repo | Commit | Usada por |
 |---|---|---|---|
 | `GRU4Rec_PyTorch_Official` | https://github.com/hidasib/GRU4Rec_PyTorch_Official | `d1fc31105577665d2f105de1c8d9a38d223a9a22` | gru4rec |
-| `SASRec.pytorch` | https://github.com/pmixer/SASRec.pytorch | `9f6a02b86a95e616fe815a0edc92dafa9911773d` | sasrec |
+| `SASRec.pytorch` | https://github.com/pmixer/SASRec.pytorch | `9f6a02b86a95e616fe815a0edc92dafa9911773d` | sasrec, multimodal |
 | `caser_pytorch` | https://github.com/graytowne/caser_pytorch | `c4e10e4c12f0fce8a0cba12008b3aff5d07a26d1` | caser |
-| `DecodingMatters` | https://github.com/SAI990323/DecodingMatters | `585c8427dd327a33155b5566f32bc22e21b5236c` | bigrec, d3, base_cot, latentr3 |
+| `DecodingMatters` | https://github.com/SAI990323/DecodingMatters | `585c8427dd327a33155b5566f32bc22e21b5236c` | bigrec, d3, base_cot, latentr3, colab |
 
 ```bash
 git clone https://github.com/hidasib/GRU4Rec_PyTorch_Official

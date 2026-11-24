@@ -70,7 +70,7 @@ git -C DecodingMatters checkout 585c8427dd327a33155b5566f32bc22e21b5236c
 4. Tener el modelo de BIGRec entrenado: `checkpoints/bigrec/<categoría>/modelo/` y `entrenamiento.json` con `terminado: true` (se entrena con `../bigrec/baseline_bigrec.ipynb`).
 5. Editar `DATASETS` (celda 3) para elegir qué categorías evaluar; hoy `['toys_data']`.
 6. Ejecutar las celdas en orden. La celda 8 evalúa y escribe en `checkpoints/bigrec/<categoría>/predicciones/d3/`; si se corta, se retoma volviendo a correrla. Las celdas 10, 12, 14 y 15 usan todas las categorías que tengan predicciones de BIGRec y D3.
-7. En Colab: montar Drive, subir `bigrec_baseline.py`, `baseline_comun.py` y `repo_latentr3/src/` al directorio de trabajo, y clonar `DecodingMatters/`. Los modelos se leen de `MyDrive/IIC3633/checkpoints/bigrec/`.
+7. En Colab: D3 de Games e Instruments se evalúa con [`../../colab/evaluar_bigrec_t4.ipynb`](../../colab/evaluar_bigrec_t4.ipynb) (BIGRec y D3 sobre el mismo modelo, en fp16 en una T4). Guía: [`../../colab/README.md`](../../colab/README.md).
 
 No toca el modelo ni las predicciones de BIGRec.
 

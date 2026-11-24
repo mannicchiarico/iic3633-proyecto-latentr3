@@ -67,6 +67,7 @@ Solo "BCE (paper)" se compara con la Tabla 1; las otras tres son referencia. "BC
 | Evaluación sobre todo el catálogo, por fila (el original usa 100 negativos muestreados por usuario, con un máximo de 10 000 usuarios, `util.py:47-69`) | Métricas y candidatos del paper | Métricas más bajas que con candidatos muestreados |
 | Ids del catálogo (0 a n-1) se suman 1 dentro del modelo; los puntajes se calculan sin la fila de padding, así que la columna j es el id j | El port reserva el 0 para el padding | Ninguno |
 | Sin máscara de padding (el original enmascara el padding como clave y consulta y lo vuelve a cero después de cada bloque, `modules.py:185-208`; `model.py:46, 66`) | No se modifica el código del port | Ver Limitaciones |
+| `entrenar` y `correr_combinacion` aceptan `crear_modelo` y `con_recs` (desde el 2026-11-24) | Los usa el baseline SASRec + SigLIP de [`../multimodal/`](../multimodal/README.md) | Ninguno: con los valores por defecto, las métricas son idénticas bit a bit (comprobado en CPU, Toys, 2 épocas) |
 
 ## Limitaciones y desviaciones respecto del paper
 

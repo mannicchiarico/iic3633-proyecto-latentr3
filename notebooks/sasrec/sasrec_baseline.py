@@ -167,10 +167,14 @@ def recomendar(modelo, prep, k=50, bloque=1024):
     return recs
 
 
-def entrenar(perdida, lr, wd, p_train, p_valid, df_valid, n_items, max_epocas=MAX_EPOCAS):
-    """Devuelve (modelo en su mejor época, mejor época, NDCG@10 en valid, épocas corridas)."""
+def entrenar(perdida, lr, wd, p_train, p_valid, df_valid, n_items, max_epocas=MAX_EPOCAS, crear_modelo=None):
+    """Devuelve (modelo en su mejor época, mejor época, NDCG@10 en valid, épocas corridas).
+
+    `crear_modelo(n_items)` permite otra representación de los ítems (notebooks/multimodal/sasrec_mm.py); por
+    defecto es `nuevo_modelo`.
+    """
     rng = np.random.default_rng(SEED)
-    modelo = nuevo_modelo(n_items)
+    modelo = (crear_modelo or nuevo_modelo)(n_items)
     opt = torch.optim.Adam(modelo.parameters(), lr=lr, betas=BETAS, weight_decay=wd)
     mejor, sin_mejora = {"ndcg": -1}, 0
     for epoca in range(1, max_epocas + 1):
@@ -191,19 +195,23 @@ def entrenar(perdida, lr, wd, p_train, p_valid, df_valid, n_items, max_epocas=MA
     return modelo, mejor["epoca"], mejor["ndcg"], epoca
 
 
-def correr_combinacion(base, categoria, variante, lr, wd, max_epocas=MAX_EPOCAS):
+def correr_combinacion(base, categoria, variante, lr, wd, max_epocas=MAX_EPOCAS, crear_modelo=None, con_recs=False):
     """Entrena una combinación y devuelve su resultado en valid y en test.
 
     Las métricas de test se calculan para todas las combinaciones porque cada una corre en otro
-    proceso, pero la elección de la mejor configuración usa solo `NDCG@10 valid`.
+    proceso, pero la elección de la mejor configuración usa solo `NDCG@10 valid`. `crear_modelo` se pasa a
+    `entrenar`; con `con_recs=True` el resultado incluye también el top-50 de test ("recs").
     """
     datos, titulos, prep = cargar_categoria(base, categoria)
     fijar_semillas()
     inicio = time.time()
     modelo, epoca, ndcg_valid, corridas = entrenar(PERDIDAS[variante], lr, wd, prep["train"], prep["valid"],
-                                                   datos["valid"], len(titulos), max_epocas)
+                                                   datos["valid"], len(titulos), max_epocas, crear_modelo)
     segundos = time.time() - inicio
     recs = recomendar(modelo, prep["test"])
-    return {"variante": variante, "categoria": categoria, "lr": lr, "weight_decay": wd, "época": epoca,
-            "épocas corridas": corridas, "segundos": segundos, "NDCG@10 valid": ndcg_valid,
-            **evaluar(recs, datos["test"], titulos)}
+    resultado = {"variante": variante, "categoria": categoria, "lr": lr, "weight_decay": wd, "época": epoca,
+                 "épocas corridas": corridas, "segundos": segundos, "NDCG@10 valid": ndcg_valid,
+                 **evaluar(recs, datos["test"], titulos)}
+    if con_recs:
+        resultado["recs"] = recs
+    return resultado

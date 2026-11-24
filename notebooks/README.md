@@ -7,13 +7,14 @@ Una carpeta por modelo (notebook, `.py` y README), más el protocolo común de l
 | `gru4rec/` | GRU4Rec (código oficial `d1fc311`) | Corrido en las 4 categorías, salvo CE todas las posiciones (pendiente) | [README](gru4rec/README.md) |
 | `sasrec/` | SASRec (port de pmixer `9f6a02b`) | Corrido en las 4 categorías | [README](sasrec/README.md) |
 | `caser/` | Caser (`caser_pytorch` `c4e10e4`) | Corrido en las 4 categorías | [README](caser/README.md) |
-| `bigrec/` | BIGRec (Qwen2.5-1.5B con el código de D3 `585c842`) | Corrido solo en Toys | [README](bigrec/README.md) |
-| `d3/` | D3 sobre el modelo de BIGRec | Corrido solo en Toys | [README](d3/README.md) |
+| `bigrec/` | BIGRec (Qwen2.5-1.5B con el código de D3 `585c842`) | Corrido solo en Toys; Games e Instruments se entrenan en local y se evalúan en Colab ([`../colab/`](../colab/README.md)) | [README](bigrec/README.md) |
+| `d3/` | D3 sobre el modelo de BIGRec | Corrido solo en Toys; Games e Instruments se evalúan en Colab | [README](d3/README.md) |
 | `base_cot/` | Base y COT (Qwen2.5-1.5B sin ajustar) | Base corrido en las 4 categorías; COT solo en Toys | [README](base_cot/README.md) |
-| `latentr3/` | LatentR3 (SFT + LR-GRPO; código de los autores `c558b44` con una copia parcheada) | Implementado, sin entrenamiento completo (solo una prueba de tiempo en Toys) | [README](latentr3/README.md) |
+| `latentr3/` | LatentR3 (SFT + LR-GRPO; código de los autores `c558b44` con una copia parcheada) | Implementado, sin entrenamiento completo (solo una prueba de tiempo en Toys). Alcance: Toys y CDs | [README](latentr3/README.md) |
+| `multimodal/` | Cobertura de imágenes, embeddings SigLIP y SASRec + SigLIP | Implementado; solo está hecha la extracción de URLs (`items/`) | [README](multimodal/README.md) |
 
 Otros archivos:
-- `baseline_comun.py`: constantes, semillas, carga de datos, métricas y carga verificada del código oficial. Lo importan GRU4Rec, SASRec, Caser, BIGRec, D3, Base/COT y LatentR3.
+- `baseline_comun.py`: constantes, semillas, carga de datos, métricas y carga verificada del código oficial; además, `entorno()` (GPU y versiones para los registros) y `verificar_gpu()` (solo actúa en Colab). Lo importan GRU4Rec, SASRec, Caser, BIGRec, D3, Base/COT, LatentR3 y multimodal.
 - `datos.ipynb`: descarga y preprocesamiento de los datos (ver el [README de la raíz](../README.md)).
 - `modelos_exploracion.ipynb`: análisis exploratorio y baselines simples (Random, MostPop, LastItem).
 
@@ -124,7 +125,7 @@ Son las cifras de la Tabla 3 del paper (App. A), salvo CDs test: el paper report
 
 - **Entorno:** `.venv-rocm` o `.venv-cuda` según la GPU (ver el [README de la raíz](../README.md)).
 - **Directorio de trabajo:** cada notebook se ejecuta desde `notebooks/<carpeta>/` (lo normal en Jupyter y VS Code) y lee los datos desde `../../repo_latentr3/data`. Agrega `notebooks/` a `sys.path` para importar `baseline_comun.py`; los procesos de la grilla heredan ese `sys.path`.
-- **Colab:** subir al directorio de trabajo el notebook, su `.py` y `baseline_comun.py`. Los datos se leen desde `data_amazon_2018/` y el código oficial desde su carpeta en el mismo directorio.
+- **Colab:** los notebooks esperan en `/content` el notebook, su `.py`, `baseline_comun.py`, `data_amazon_2018/` y el código oficial en su carpeta. `colab/preparar.py` arma esa estructura con enlaces a un clon del repo; la guía está en [`../colab/README.md`](../colab/README.md).
 - **Fuentes externas:** el código oficial de cada modelo se clona en la raíz del repositorio (ignorado por git), con el commit fijado; ver [Fuentes externas](../README.md#fuentes-externas). Cada `.py` verifica el sha256 de los archivos que carga antes de importarlos y se detiene si no corresponden al commit.
 - **Celdas:** en todos los README las celdas se numeran desde 0 (posición en el JSON del notebook).
 - Los notebooks de los baselines tradicionales no escriben archivos. BIGRec escribe checkpoints y predicciones en `checkpoints/bigrec/`, y LatentR3 en `checkpoints/latentr3/` (ver sus README).

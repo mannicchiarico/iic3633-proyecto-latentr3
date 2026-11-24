@@ -2,13 +2,18 @@
 verificada del código oficial de cada modelo.
 
 Lo importan los .py de GRU4Rec, SASRec, Caser, BIGRec, Base/COT y LatentR3, y el notebook de D3. Las decisiones comunes
-(D1–D17) están en notebooks/README.md.
+(D1–D17) están en notebooks/README.md. `entorno()` y `verificar_gpu()` registran y comprueban la GPU; la segunda solo
+actúa en Colab (colab/README.md).
 """
 import os
 import ast
 import random
+import shutil
 import hashlib
+import platform
+import subprocess
 import importlib.util
+import importlib.metadata
 import numpy as np
 import pandas as pd
 import torch
@@ -115,3 +120,83 @@ def evaluar(recomendaciones, df, titulos=None, ks=(5, 10)):
             assert resultados[f"HR@{k} título"] >= resultados[f"HR@{k} id"]
             assert resultados[f"NDCG@{k} título"] >= resultados[f"NDCG@{k} id"]
     return resultados
+
+
+# ---------- Entorno y GPU (Colab) ----------
+
+def en_colab():
+    """True si el proceso corre en Google Colab."""
+    try:
+        return importlib.util.find_spec("google.colab") is not None
+    except ModuleNotFoundError:
+        return False
+
+
+def _driver_nvidia():
+    if shutil.which("nvidia-smi") is None:
+        return None
+    salida = subprocess.run(["nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"],
+                            capture_output=True, text=True)
+    return salida.stdout.strip().splitlines()[0] if salida.returncode == 0 and salida.stdout.strip() else None
+
+
+def bf16_nativo():
+    """bf16 implementado en el hardware (no emulado). Falso en una T4 (capacidad 7.5)."""
+    if not torch.cuda.is_available():
+        return False
+    try:
+        return torch.cuda.is_bf16_supported(including_emulation=False)
+    except TypeError:   # torch sin el argumento: capacidad 8.0 o superior en CUDA
+        return torch.version.hip is not None or torch.cuda.get_device_capability(0) >= (8, 0)
+
+
+def entorno():
+    """GPU, versiones y plataforma, para guardar junto a cada resultado."""
+    info = {"plataforma": "colab" if en_colab() else "local", "sistema": platform.platform(),
+            "python": platform.python_version(), "torch": torch.__version__, "cuda": torch.version.cuda,
+            "hip": getattr(torch.version, "hip", None)}
+    for paquete in ("transformers", "trl", "accelerate"):
+        try:
+            info[paquete] = importlib.metadata.version(paquete)
+        except importlib.metadata.PackageNotFoundError:
+            info[paquete] = None
+    if torch.cuda.is_available():
+        propiedades = torch.cuda.get_device_properties(0)
+        info.update(gpu=propiedades.name, memoria_total_gib=round(propiedades.total_memory / 2**30, 2),
+                    capacidad=list(torch.cuda.get_device_capability(0)), bf16_nativo=bf16_nativo())
+    else:
+        info.update(gpu=None, memoria_total_gib=None, capacidad=None, bf16_nativo=False)
+    info["driver"] = _driver_nvidia()
+    return info
+
+
+def precision_gpu():
+    """Precisión de inferencia: bf16 si la GPU lo tiene en hardware (la de los autores); si no, fp16 (desviación)."""
+    return torch.bfloat16 if bf16_nativo() else torch.float16
+
+
+def verificar_gpu(etapa, modelo=None, memoria_min_gib=None, **config):
+    """En Colab, se detiene con un mensaje claro si no hay GPU CUDA, si tiene menos memoria que `memoria_min_gib` o si
+    algún parámetro de `modelo` no está en la GPU, e imprime la GPU y la configuración efectiva. Fuera de Colab no hace
+    nada y devuelve None: en local se mantiene el comportamiento de siempre.
+    """
+    if not en_colab():
+        return None
+    if not torch.cuda.is_available():
+        raise RuntimeError(f"[{etapa}] No hay GPU. En Colab: Entorno de ejecución > Cambiar tipo de entorno de ejecución "
+                           "> T4 GPU, y volver a correr la preparación. No se corre en CPU.")
+    info = entorno()
+    if memoria_min_gib is not None and info["memoria_total_gib"] < memoria_min_gib:
+        raise RuntimeError(f"[{etapa}] La GPU {info['gpu']} tiene {info['memoria_total_gib']} GiB; hacen falta "
+                           f"{memoria_min_gib} GiB.")
+    if modelo is not None:
+        fuera = [nombre for nombre, p in modelo.named_parameters() if p.device.type != "cuda"]
+        if fuera:
+            raise RuntimeError(f"[{etapa}] {len(fuera)} parámetros no están en la GPU (p. ej. {fuera[0]}).")
+        print(f"[{etapa}] modelo en la GPU: OK")
+        return info
+    print(f"[{etapa}] GPU {info['gpu']} | {info['memoria_total_gib']} GiB | capacidad {info['capacidad']} | "
+          f"bf16 nativo {info['bf16_nativo']} | driver {info['driver']} | torch {info['torch']} (CUDA {info['cuda']})")
+    if config:
+        print(f"[{etapa}] configuración: " + ", ".join(f"{k}={v}" for k, v in config.items()))
+    return info
