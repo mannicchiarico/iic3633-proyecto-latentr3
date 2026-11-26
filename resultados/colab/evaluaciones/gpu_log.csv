@@ -1,0 +1,131 @@
+etapa,timestamp,name,utilization.gpu [%],memory.used [MiB]
+sin etapa,2026/11/26 17:38:27.542,Tesla T4,0 %,3 MiB
+sin etapa,2026/11/26 17:39:27.595,Tesla T4,0 %,3 MiB
+sin etapa,2026/11/26 17:40:27.628,Tesla T4,0 %,3 MiB
+sin etapa,2026/11/26 17:41:27.662,Tesla T4,0 %,3 MiB
+sin etapa,2026/11/26 17:42:27.694,Tesla T4,0 %,3 MiB
+sin etapa,2026/11/26 17:43:27.725,Tesla T4,0 %,3 MiB
+sin etapa,2026/11/26 17:44:27.755,Tesla T4,0 %,3 MiB
+sin etapa,2026/11/26 17:45:27.789,Tesla T4,0 %,3 MiB
+sin etapa,2026/11/26 17:46:22.757,Tesla T4,0 %,3 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 17:47:22.797,Tesla T4,0 %,3 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 17:48:22.843,Tesla T4,100 %,11661 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 17:49:22.900,Tesla T4,92 %,10453 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 17:50:22.958,Tesla T4,100 %,10453 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 17:51:23.004,Tesla T4,94 %,10453 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 17:52:23.038,Tesla T4,95 %,10453 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 17:53:23.097,Tesla T4,100 %,10453 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 17:54:23.132,Tesla T4,96 %,10453 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 17:55:23.167,Tesla T4,93 %,10453 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 17:56:23.213,Tesla T4,100 %,10453 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 17:57:23.249,Tesla T4,100 %,10453 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 17:58:23.282,Tesla T4,100 %,10453 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 17:59:23.331,Tesla T4,100 %,10453 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:00:23.373,Tesla T4,94 %,10453 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:01:23.408,Tesla T4,99 %,10453 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:02:23.444,Tesla T4,100 %,10453 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:03:23.479,Tesla T4,93 %,10453 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:04:23.512,Tesla T4,99 %,10453 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:05:23.547,Tesla T4,88 %,14023 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:06:23.607,Tesla T4,87 %,14023 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:07:23.657,Tesla T4,99 %,14023 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:08:23.696,Tesla T4,95 %,14023 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:09:23.743,Tesla T4,100 %,14023 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:10:23.788,Tesla T4,100 %,14023 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:11:23.841,Tesla T4,100 %,14023 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:12:23.874,Tesla T4,93 %,14023 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:13:23.909,Tesla T4,100 %,14023 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:14:23.943,Tesla T4,95 %,14023 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:15:23.974,Tesla T4,99 %,14023 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:16:24.005,Tesla T4,100 %,14023 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:17:24.040,Tesla T4,100 %,14023 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:18:24.091,Tesla T4,97 %,14023 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:19:24.138,Tesla T4,99 %,10473 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:20:24.171,Tesla T4,100 %,10473 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:21:24.203,Tesla T4,100 %,10473 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:22:24.236,Tesla T4,100 %,10473 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:23:24.268,Tesla T4,99 %,10473 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:24:24.316,Tesla T4,88 %,10473 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:25:24.354,Tesla T4,100 %,10473 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:26:24.389,Tesla T4,100 %,10473 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:27:24.435,Tesla T4,100 %,10473 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:28:24.475,Tesla T4,99 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:29:24.510,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:30:24.573,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:31:24.616,Tesla T4,95 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:32:24.663,Tesla T4,89 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:33:24.698,Tesla T4,89 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:34:24.730,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:35:24.767,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:36:24.816,Tesla T4,98 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:37:24.857,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:38:24.892,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:39:24.943,Tesla T4,79 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:40:24.986,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:41:25.019,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:42:25.051,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:43:25.095,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:44:25.143,Tesla T4,94 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:45:25.175,Tesla T4,91 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:46:25.222,Tesla T4,75 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:47:25.265,Tesla T4,87 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:48:25.297,Tesla T4,88 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:49:25.348,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:50:25.396,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:51:25.446,Tesla T4,95 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:52:25.496,Tesla T4,90 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:53:25.538,Tesla T4,89 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:54:25.569,Tesla T4,95 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:55:25.618,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:56:25.660,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:57:25.692,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:58:25.742,Tesla T4,95 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 18:59:25.808,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:00:25.846,Tesla T4,99 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:01:25.901,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:02:25.944,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:03:25.976,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:04:26.008,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:05:26.049,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:06:26.082,Tesla T4,89 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:07:26.132,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:08:26.173,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:09:26.205,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:10:26.253,Tesla T4,99 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:11:26.297,Tesla T4,89 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:12:26.336,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:13:26.384,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:14:26.432,Tesla T4,92 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:15:26.467,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:16:26.506,Tesla T4,95 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:17:26.560,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:18:26.610,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:19:26.644,Tesla T4,100 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:20:26.678,Tesla T4,89 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:21:26.728,Tesla T4,96 %,14091 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:22:26.767,Tesla T4,100 %,10657 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:23:26.800,Tesla T4,88 %,10663 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:24:26.843,Tesla T4,100 %,10663 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:25:26.883,Tesla T4,100 %,10663 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:26:26.915,Tesla T4,97 %,10663 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:27:26.947,Tesla T4,91 %,10663 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:28:26.979,Tesla T4,100 %,10663 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:29:27.014,Tesla T4,100 %,14407 MiB
+Toys_and_Games bigrec_t4 (validación),2026/11/26 19:30:27.046,Tesla T4,95 %,14407 MiB
+sin etapa,2026/11/26 19:31:27.079,Tesla T4,0 %,161 MiB
+sin etapa,2026/11/26 19:32:27.107,Tesla T4,0 %,161 MiB
+sin etapa,2026/11/26 19:33:27.139,Tesla T4,0 %,161 MiB
+sin etapa,2026/11/26 19:34:27.169,Tesla T4,0 %,161 MiB
+sin etapa,2026/11/26 19:35:27.197,Tesla T4,0 %,161 MiB
+sin etapa,2026/11/26 19:36:27.224,Tesla T4,0 %,161 MiB
+sin etapa,2026/11/26 19:37:27.251,Tesla T4,0 %,161 MiB
+sin etapa,2026/11/26 19:38:27.279,Tesla T4,0 %,161 MiB
+sin etapa,2026/11/26 19:39:27.311,Tesla T4,0 %,161 MiB
+sin etapa,2026/11/26 19:40:27.341,Tesla T4,0 %,161 MiB
+sin etapa,2026/11/26 19:41:27.368,Tesla T4,0 %,161 MiB
+sin etapa,2026/11/26 19:42:27.395,Tesla T4,0 %,161 MiB
+sin etapa,2026/11/26 19:43:27.422,Tesla T4,0 %,161 MiB
+sin etapa,2026/11/26 19:44:27.451,Tesla T4,0 %,161 MiB
+sin etapa,2026/11/26 19:45:27.481,Tesla T4,0 %,161 MiB
+sin etapa,2026/11/26 19:46:27.509,Tesla T4,0 %,161 MiB
+sin etapa,2026/11/26 19:47:27.537,Tesla T4,0 %,161 MiB

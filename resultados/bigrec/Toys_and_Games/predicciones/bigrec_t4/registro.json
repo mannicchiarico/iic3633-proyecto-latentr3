@@ -1,0 +1,30 @@
+{
+ "filas": 6738,
+ "segundos": 6184.282945156097,
+ "batch_size": 24,
+ "length_penalty": 1.0,
+ "dtype": "torch.float16",
+ "entornos": [
+  {
+   "desde_parte": 0,
+   "plataforma": "colab",
+   "sistema": "Linux-6.6.159+-x86_64-with-glibc2.39",
+   "python": "3.13.16",
+   "torch": "2.14.1+cu130",
+   "cuda": "13.0",
+   "hip": null,
+   "transformers": "4.51.3",
+   "trl": null,
+   "accelerate": "1.6.0",
+   "gpu": "Tesla T4",
+   "memoria_total_gib": 14.56,
+   "capacidad": [
+    7,
+    5
+   ],
+   "bf16_nativo": false,
+   "driver": "580.82.07"
+  }
+ ],
+ "memoria_max_gb": 9.400506019592285
+}

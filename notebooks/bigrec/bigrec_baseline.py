@@ -143,6 +143,25 @@ def entrenar(categoria, base, salida, sample_train=-1, sample_valid=-1, micro_ba
         def on_step_end(self, args, state, control, **kwargs):
             self.marcas.append(time.time())
 
+    class TrainerEvalPorPartes(Trainer):
+        # Solo en la evaluación: pasa cada lote de MICRO_BATCH (4) filas por partes de micro_batch filas, cortadas del
+        # lote ya rellenado, y combina las pérdidas ponderando por los tokens con etiqueta. La pérdida de HF es la
+        # media sobre esos tokens del lote (loss_utils.ForCausalLMLoss), así que da la misma eval_loss que el lote
+        # entero salvo redondeo. Con 4 filas, los logits en fp32 de Musical_Instruments (valid hasta 416 tokens)
+        # agotaron la memoria al evaluar la época 1 (baseline_bigrec.ipynb, celda 24, 2026-11-26)
+        def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+            filas = inputs["input_ids"].shape[0]
+            if model.training or filas <= micro_batch:
+                return super().compute_loss(model, inputs, return_outputs, num_items_in_batch)
+            suma, tokens = 0.0, 0
+            for i in range(0, filas, micro_batch):
+                parte = {k: v[i:i + micro_batch] if torch.is_tensor(v) else v for k, v in inputs.items()}
+                n = (parte["labels"][:, 1:] != -100).sum()   # los mismos tokens que cuenta ForCausalLMLoss
+                if n > 0:
+                    suma, tokens = suma + super().compute_loss(model, parte) * n, tokens + n
+            perdida = suma / tokens
+            return (perdida, {"loss": perdida}) if return_outputs else perdida
+
     cronometro = Cronometro()
     args = TrainingArguments(
         output_dir=dir_trainer,
@@ -166,7 +185,7 @@ def entrenar(categoria, base, salida, sample_train=-1, sample_valid=-1, micro_ba
         gradient_checkpointing=checkpointing,
         gradient_checkpointing_kwargs={"use_reentrant": False} if checkpointing else None,
     )
-    trainer = Trainer(
+    trainer = TrainerEvalPorPartes(
         model=modelo, args=args, train_dataset=a_hf(train), eval_dataset=a_hf(valid), processing_class=tokenizer,
         data_collator=DataCollatorForSeq2Seq(tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True),
         callbacks=[EarlyStoppingCallback(early_stopping_patience=PACIENCIA), cronometro],
@@ -201,6 +220,7 @@ def entrenar(categoria, base, salida, sample_train=-1, sample_valid=-1, micro_ba
         "memoria_reservada_max_gb": torch.cuda.max_memory_reserved() / 2**30,
         "micro_batch": micro_batch, "acumulacion": BATCH_SIZE // micro_batch,
         "gradient_checkpointing": checkpointing, "optim": optim,
+        "filas_por_parte_eval": min(micro_batch, MICRO_BATCH),   # TrainerEvalPorPartes
         "torch": torch.__version__, "transformers": transformers.__version__,
         "gpu": torch.cuda.get_device_name(0), "entorno": entorno(),
         "log_history": trainer.state.log_history,
