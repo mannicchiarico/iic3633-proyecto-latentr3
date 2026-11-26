@@ -1,0 +1,8 @@
+{
+ "filas": 6738,
+ "segundos": 2334.286210298538,
+ "batch_size": 12,
+ "length_penalty": 1.0,
+ "modelo": "/run/host/var/home/maurice/Documents/University/2026-2/Sistemas Recomendadores/Proyecto/iic3633-proyecto-latentr3/checkpoints/latentr3/Toys_and_Games/sft/modelo",
+ "memoria_max_gb": 8.937729358673096
+}

@@ -28,7 +28,9 @@ TOKEN_LATENTE = "<|Thought|>"
 # SFT: latent_attention_train.py (los mismos argumentos que BIGRec, importados de bigrec_baseline)
 MICRO_SFT = 2            # acumulación 64; el batch efectivo sigue en 128
 # RL: scripts/attention_grpo.sh y train_noise_grpo.py
-LR_RL = 5e-4             # decisión del proyecto: solo 5e-4; el autor lo sugiere para CDs (issue #2)
+LR_RL = 1e-5             # de la grilla de attention_grpo.sh. En Toys divergieron 5e-4 (sugerido por el autor para CDs,
+                         # issue #2; desde el paso ~100, rl_5e-4/) y 1e-4 (desde el paso ~235, rl_1e-4/), ambos con
+                         # una suma acumulada de lr de ~0,013; con 1e-5 la corrida completa suma ~0,0084 (2026-11-25)
 NUM_GENERATIONS = 8      # K
 BATCH_RL = 256           # filas por paso de optimización = 32 prompts x 8
 GRUPOS_POR_MICRO = 2     # 2 GPUs simuladas (parche P3): un grupo por GPU de los autores
@@ -36,7 +38,8 @@ MICRO_RL = NUM_GENERATIONS * GRUPOS_POR_MICRO
 WARMUP_RL = 200          # train_noise_grpo.py L128
 SAVE_STEPS_RL = 200      # train_noise_grpo.py L151
 # Evaluación: lotes de latent_train.sh (SFT) y attention_grpo.sh (RL)
-BATCH_GEN_SFT = 24
+BATCH_GEN_SFT = 12      # latent_train.sh usa 24, pero con 24 la evaluación del SFT no cabe en 16 GB (~14,3 GB con
+                        # prompts de 290 tokens); 12, como la del RL (attention_grpo.sh). Desviación: README.md
 BATCH_GEN_RL = 12
 LENGTH_PENALTY = {"latentr3": 1.0,   # latent_attention_eval.py L32 / noise_eval.py
                   "d3": 0.0}         # D3 + LatentR3 sin TFA (deducción del proyecto, base: evaluate2.sh de D3)
@@ -567,7 +570,7 @@ def evaluar_categoria(categoria, base, dir_modelo, dir_pred, batch_size, length_
 def rutas(salida_categoria):
     """Carpetas de un dataset dentro de checkpoints/latentr3/<categoría>/."""
     sft = os.path.join(salida_categoria, "sft")
-    rl = os.path.join(salida_categoria, "rl_" + f"{LR_RL:.0e}".replace("e-0", "e-"))   # rl_5e-4
+    rl = os.path.join(salida_categoria, "rl_" + f"{LR_RL:.0e}".replace("e-0", "e-"))   # rl_1e-5
     return {"sft": sft, "modelo_sft": os.path.join(sft, "modelo"), "pred_sft": os.path.join(sft, "predicciones", "test"),
             "rl": rl, "modelo_rl": os.path.join(rl, "modelo"), "pred_rl": os.path.join(rl, "predicciones", "test"),
             "pred_d3": os.path.join(rl, "predicciones", "test_d3")}

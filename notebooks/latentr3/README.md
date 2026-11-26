@@ -2,7 +2,7 @@
 
 LatentR3 completo: Qwen2.5-1.5B con **LatentRATT**, una capa de atención que produce un token latente de razonamiento a partir de los estados ocultos del prompt. Se entrena en dos etapas, un SFT de todo el modelo y un RL (LR-GRPO) que solo ajusta LatentRATT, y se evalúa con decodificación restringida al catálogo, como BIGRec. Se evalúan tres variantes por dataset: "only SFT" (Tabla 2 del paper), LatentR3 (BIGRec + LatentR3, Tabla 1) y D3 + LatentR3 (Tabla 1). Cada dataset tiene su propio modelo, entrenado desde Qwen2.5-1.5B base.
 
-**Estado:** implementado y sin correr. El notebook no tiene outputs y no hay métricas propias. Solo existe la prueba de tiempo en Toys, hecha con scripts aparte (ver "Costos medidos"); sus JSON están en [`../../resultados/latentr3/`](../../resultados/latentr3/).
+**Estado:** corrido completo en Toys (SFT, RL con lr 1e-5 y las tres evaluaciones; 2026-11-25). CDs queda pendiente. En Toys, el RL no cambia las métricas respecto del SFT (ver "Resultados"). Los JSON están en [`../../resultados/latentr3/`](../../resultados/latentr3/), junto con la prueba de tiempo previa (ver "Costos medidos").
 
 ## Fuente y versión
 
@@ -54,7 +54,7 @@ Fuentes: "paper" cita sección o apéndice; "repo" es el código de los autores 
 | Recompensa | −PPL del título objetivo con la política actual, sin generar | paper, Eq. 6; repo `grpo_trainer.py:156` |
 | Ventaja | Recompensa menos la media de las muestras sin ruido de los grupos del micro-paso, dividida por la norma | paper, Eq. 7 ("batch" sin tamaño); repo |
 | KL y clip | β = 0; clip 0,2 / 0,28, inactivo con `num_iterations` 1 | paper (KL cero); repo, script |
-| lr | 5e-4 en los 4 datasets, sin grilla | decisión del proyecto; el autor lo sugiere para CDs (issue #2). Grilla del paper: {1e-5, 1e-4, 5e-4}, App. B |
+| lr | 1e-5, sin grilla | decisión del proyecto (2026-11-25). Antes 5e-4, que el autor sugiere para CDs (issue #2), y 1e-4: en Toys divergieron los dos (ver "Problemas conocidos"). Grilla del paper: {1e-5, 1e-4, 5e-4}, App. B |
 | Batch | 256 filas por paso (32 prompts × 8); micro-batch 16 (2 grupos) con acumulación 16 | el paper no lo especifica; repo; micro-batch: decisión del proyecto (2 GPUs simuladas) |
 | Scheduler y épocas | Coseno con warmup 200, 1 época, modelo final; checkpoint cada 200 pasos | el paper no lo especifica; repo `train_noise_grpo.py:128,151` |
 | Validación | Ninguna (`eval_strategy="no"`) | decisión del proyecto, como los autores |
@@ -62,7 +62,7 @@ Fuentes: "paper" cita sección o apéndice; "repo" es el código de los autores 
 | Gradient checkpointing | No | decisión del proyecto: cabe en 16 GB (ver "Costos medidos") |
 | **Evaluación** | | |
 | Decodificación | Beam search de 10 beams restringido al catálogo con un trie de 5 tokens, `max_new_tokens` 128 | paper, App. B (restringida); repo `latent_attention_eval.py`, `noise_eval.py` |
-| Lotes | 24 (SFT) y 12 (RL) | repo `latent_train.sh`, `attention_grpo.sh` |
+| Lotes | 12 en las dos evaluaciones (SFT y RL) | RL: repo `attention_grpo.sh`. SFT: `latent_train.sh` usa 24, que no cabe en 16 GB (ver "Problemas conocidos"); decisión del proyecto, 2026-11-25 |
 | LatentR3 | `length_penalty` 1,0 | repo `latent_attention_eval.py:32`, `noise_eval.py` |
 | D3 + LatentR3 | `length_penalty` 0,0 sobre el modelo del RL, sin ensemble con un modelo tradicional | paper, App. B (D3 sin ensemble); el valor 0,0 es una deducción del proyecto (base: `evaluate2.sh` de D3 sin `guidance_scale`) |
 | Criterio de acierto | Por título; cada `final_result.json` se verifica con `gao` de `calc.py` | es el criterio de la Tabla 1; decisión del proyecto |
@@ -83,6 +83,7 @@ La numeración salta de P3 a P5 porque P4 se probó y se revirtió (era una sola
 | P2: `logits_to_keep=1` en el primer pase de `generate_embs` | `model.py` | Ese pase solo usa los estados ocultos; los logits de todo el vocabulario no caben en 16 GB con lotes de 24 × 10 beams (~15 GB, medición fuera del notebook, sin output guardado) | Ninguno: los estados ocultos no cambian (verificación V5) |
 | P3: **2 GPUs simuladas**. Cada micro-paso trae 2 grupos; cada grupo se colaciona y puntúa por separado con el código original, la ventaja se calcula sobre los 2 grupos con las líneas originales y se hace el backward de cada grupo | `grpo_trainer.py` | El paper usa 2 A100 y los autores advierten que la ventaja por batch depende de las 2 GPUs; aquí hay una sola GPU | El mismo gradiente que con 2 GPUs (V7, V8). Cambian el RNG del ruido (con 2 GPUs cada proceso se siembra con `seed + process_index`; con uno, los ruidos de los dos grupos salen del mismo flujo con semilla 42) y el redondeo |
 | P5: con gradiente, los dos productos de atención de LatentRATT se calculan elemento a elemento y suma en fp32 | `model.py` | Defecto de hipBLASLt con k = 1 en ROCm 7.14 (gfx1201) que mata el proceso (ver "Problemas conocidos") | Salida idéntica; gradientes idénticos con autocast (SFT) y con diferencia relativa de 4e-5 en bf16 (RL), según V5 y medición fuera del notebook, sin output guardado |
+| Evaluación del SFT con lotes de 12 en vez de 24 (`BATCH_GEN_SFT`) | `latentr3.py` | Con 24, el pico llega a ~14,3 GB y no cabe en 16 GB; con 12, las 120 filas más largas de Toys llegan a 9,63 GB | Algunas filas pueden cambiar su top-10, porque el padding a la izquierda depende de con qué filas se agrupa cada una (en BIGRec, 82 de 100 filas cambiaron entre lotes de 24 y de 1). Es el lote que usan los autores para evaluar el RL |
 | F3: `AdamWEnCPU` para el SFT, en `latentr3.py` | `latentr3.py` | Pesos, gradientes y estados de AdamW no caben en 16 GB | Ninguno: llama a `torch.optim.adam.adam` con `decoupled_weight_decay=True`, la misma función de `torch.optim.AdamW`, con los estados en bf16 como `adamw_torch`. Parámetros idénticos bit a bit tras 5 pasos (medición fuera del notebook, sin output guardado) |
 
 Cómo funciona F3: por cada parámetro copia el gradiente y el parámetro a la CPU, actualiza ahí y devuelve el parámetro a la GPU. No guarda una copia permanente del modelo en la RAM, así que no puede desincronizarse al retomar desde un checkpoint; al cargar un checkpoint devuelve los estados a la CPU.
@@ -113,15 +114,16 @@ Celdas 7 a 10 del notebook; corren en CPU, con modelos diminutos (2 capas, dimen
 
 - **Una GPU de 16 GB en vez de 2 A100:** el RL se simula con 2 grupos por micro-paso (P3); el gradiente es el mismo, pero no se contrastó con una corrida de 2 GPUs.
 - **Entorno distinto** (ROCm 7.14, torch 2.14, transformers 4.51.3, trl 0.16.1 frente a CUDA 12.1 y torch 2.6 de los autores): el autor advierte que el resultado cambia con el entorno.
-- **Un solo lr del RL (5e-4) para los 4 datasets**, sin grilla; el lr elegido por los autores no está especificado.
+- **Un solo lr del RL (1e-5)**, sin grilla; el lr elegido por los autores no está especificado. Se bajó de 5e-4 a 1e-4 y luego a 1e-5 porque la recompensa de entrenamiento divergió en Toys; la elección no usa `test`.
 - **lr del SFT 3e-4 sin grilla**, como confirma el autor.
 - **Sin validación en el RL:** se usa el modelo final de 1 época, sin elegir checkpoint.
 - **Valores tomados del código de los autores** porque el paper no los especifica: K = 8, σ = 1,5, batch de 256 filas, coseno con warmup 200, `max_prompt_length` 512 y `max_completion_length` 256.
 - **Una sola corrida con semilla 42, no determinista**, mientras el paper reporta una corrida determinista (App. E).
+- **Evaluación del SFT ("only SFT") con lotes de 12**, no de 24 como `latent_train.sh`: con 24 no cabe en 16 GB. Algunas filas pueden cambiar su top-10.
 - **D3 + LatentR3 con `length_penalty` 0,0** es una deducción del proyecto, no un dato de los autores.
-- **Nuestro BIGRec en Toys podría estar ya cerca del "only SFT" del paper**, así que la ganancia absoluta del RL puede ser menor que en el paper. No se ha comparado: aún no hay resultados propios de LatentR3.
+- **Nuestro BIGRec en Toys ya está al nivel del "only SFT"** (del paper y del nuestro; ver "Resultados"), así que el margen que le queda al RL es menor que en el paper.
 - **Retomar pierde trabajo:** en el SFT, hasta 1 época (los checkpoints son por época); en el RL, hasta 200 pasos.
-- **Sin métricas propias:** la implementación no se ha corrido; ninguna de las tablas de "Resultados" tiene cifras propias.
+- **Solo Toys tiene métricas propias**, de una corrida, con lr 1e-5 elegido tras la divergencia de 5e-4 y 1e-4.
 
 ## Cómo correrlo
 
@@ -133,7 +135,7 @@ Celdas 7 a 10 del notebook; corren en CPU, con modelos diminutos (2 capas, dimen
 - **Prueba rápida (celdas 12-16):** en Toys, con 1024 filas de `train` (8 pasos por época), 256 de `valid`, 100 de `test` y 64 prompts para el RL (2 pasos). Comprueba el pipeline completo (0 títulos fuera del catálogo, métricas iguales a las de `calc.py`, solo cambia LatentRATT en el RL), vuelve a medir tiempos y escribe en `checkpoints/latentr3/_prueba/`, que se borra al final (`BORRAR_PRUEBA`). Duración estimada de 12 a 16 minutos de GPU (estimada, sin medición).
 - **Archivos que escribe** en `checkpoints/latentr3/<categoría>/` (ignorado por git):
   - `sft/trainer/`: checkpoints por época, máximo 2; se borran al terminar. `sft/modelo/`: mejor época. `sft/entrenamiento.json` y `sft/predicciones/test/`.
-  - `rl_5e-4/trainer/`: checkpoint cada 200 pasos, máximo 2; se borran al terminar. `rl_5e-4/modelo/`. `rl_5e-4/entrenamiento.json`, `rl_5e-4/predicciones/test/` (LatentR3) y `rl_5e-4/predicciones/test_d3/` (D3 + LatentR3).
+  - `rl_1e-5/trainer/`: checkpoint cada 200 pasos, máximo 2; se borran al terminar. `rl_1e-5/modelo/`. `rl_1e-5/entrenamiento.json`, `rl_1e-5/predicciones/test/` (LatentR3) y `rl_1e-5/predicciones/test_d3/` (D3 + LatentR3).
   - Tamaños, medidos fuera del notebook, sin output guardado: ~9 GB por checkpoint del SFT y ~3,1 GB por modelo.
 - **Retomar:** volver a correr la celda. Cada etapa continúa desde su último checkpoint y se salta si `entrenamiento.json` dice que terminó; la evaluación se salta las partes de 256 filas ya escritas.
 - **Otros procesos:** conviene cerrar los kernels de Jupyter de otros notebooks antes de entrenar; el escritorio y otros procesos ocupan ~1,4-1,9 GB de la GPU (medición fuera del notebook, sin output guardado).
@@ -154,9 +156,14 @@ Todos los tiempos son de la GPU RX 9070 XT (16 GB) en Toys, con la LatentRATT re
 | RL, mediana de 50 pasos con `train()` | RX 9070 XT | 8,8 GB | no medido | 9,62 s por paso | medido fuera del notebook, sin output guardado | no hay archivo versionado |
 | Generación, lotes de 24 (SFT) | RX 9070 XT | 13,14 GB (pico) | no medido | 0,372 s por fila | medido | `resultados/latentr3/_tiempo/gen.json` |
 | Generación, lotes de 12 (RL) | RX 9070 XT | 8,15 GB (pico) | no medido | 0,410 s por fila | medido | `resultados/latentr3/_tiempo/gen.json` |
-| Entrenamiento y evaluación completos | RX 9070 XT | no medido | no medido | no medido | no corrido | no aplica |
+| SFT completo en Toys (3 épocas, 1263 pasos) | RX 9070 XT | 9,76 GB (máximo asignado; 15,10 GB reservados) | no medido | 6,73 h; 18,77 s por paso (mediana); `valid` 0,020 s por fila | medido (celda 18) | `resultados/latentr3/Toys_and_Games/sft/entrenamiento.json` |
+| RL completo en Toys (1 época, 1684 pasos) | RX 9070 XT | 9,62 GB (máximo asignado; 15,33 GB reservados) | no medido | 6,77 h; 14,43 s por paso (mediana) | medido (celda 22) | `resultados/latentr3/Toys_and_Games/rl_1e-5/entrenamiento.json` |
+| Evaluación del SFT en Toys (lotes de 12, 6738 filas) | RX 9070 XT | 8,94 GB | no medido | 2334 s (0,346 s por fila) | medido (celda 20) | `.../sft/predicciones/test/registro.json` |
+| Evaluación de LatentR3 en Toys (lotes de 12) | RX 9070 XT | 12,05 GB | no medido | 2503 s (0,371 s por fila) | medido (celda 24) | `.../rl_1e-5/predicciones/test/registro.json` |
+| Evaluación de D3 + LatentR3 en Toys (lotes de 12) | RX 9070 XT | 9,01 GB | no medido | 2325 s (0,345 s por fila) | medido (celda 24) | `.../rl_1e-5/predicciones/test_d3/registro.json` |
 
 Notas:
+- En Toys, la corrida real tardó más que la estimación: SFT 18,77 s por paso frente a 15,1 s y RL 14,43 s frente a 9,62 s. Toys tomó 15,3 h en total frente a las 12,2 h estimadas (sin contar las corridas divergentes del RL con 5e-4 y 1e-4, de unos 400 pasos cada una). La tabla de horas estimadas no se recalculó.
 - La generación de `gen.json` se midió con el LLM de BIGRec en Toys más una LatentRATT nueva, porque el modelo base sin ajustar genera títulos largos y sería más lento (medición fuera del notebook, sin output guardado).
 - Las memorias del RL distinguen asignada y máxima: 7,82 GB (`rl.json`, `pico_gb`) frente a 8,58 GB (`_tiempo_rl`, `memoria_max_gb`); los 8,8 GB de la fila de 50 pasos no tienen archivo.
 - Memoria del SFT: los pesos (2,9 GB), los gradientes (2,9 GB) y los estados de AdamW (5,8 GB) ocupan 11,6 GB fijos, y el backward suma ~2,8 GB transitorios (copias fp32 de los logits y gradientes densos del tamaño de la matriz de embeddings). El pico es casi igual con micro-batch 2 (14,43 GB) y 1 (14,61 GB). Medición fuera del notebook, sin output guardado; el `sft1.json` y el `sft2.json` registran 11,70 GB sin los estados de Adam.
@@ -187,14 +194,38 @@ Las tablas del SFT y de la evaluación no tienen un JSON equivalente; el `estima
 
 ## Resultados
 
-**Resultados propios: no hay.** El notebook no se ha corrido, así que no existen la loss de `valid` por época del SFT, la recompensa por paso del RL ni las métricas de "only SFT", LatentR3 y D3 + LatentR3. Cuando se corra, las celdas 18, 22 y 26 las producen y la celda 28 las compara con el paper y con nuestro BIGRec y D3 (de `checkpoints/bigrec/`, con la mejora relativa media de las 4 métricas).
+Toys, criterio por título, 6738 filas de `test`, 0 títulos fuera del catálogo y 0 repetidos en las tres variantes. Las métricas se calculan en la celda 26 y se verifican con `gao` de `calc.py`; la comparación está en la celda 28.
 
 | Dataset | Variante | HR@5 | HR@10 | NDCG@5 | NDCG@10 |
 |---|---|---|---|---|---|
-| Toys | only SFT | no corrido | no corrido | no corrido | no corrido |
-| Toys | LatentR3 | no corrido | no corrido | no corrido | no corrido |
-| Toys | D3 + LatentR3 | no corrido | no corrido | no corrido | no corrido |
-| CDs, Games, Instruments | las tres variantes | no corrido | no corrido | no corrido | no corrido |
+| Toys | only SFT | 0.0760 | 0.1067 | 0.0561 | 0.0660 |
+| Toys | LatentR3 (RL, lr 1e-5) | 0.0767 | 0.1067 | 0.0565 | 0.0662 |
+| Toys | D3 + LatentR3 | 0.0901 | 0.1141 | 0.0662 | 0.0740 |
+| Toys | Nuestro BIGRec (referencia) | 0.0770 | 0.1060 | 0.0563 | 0.0657 |
+| Toys | Nuestro D3 (referencia) | 0.0873 | 0.1153 | 0.0649 | 0.0740 |
+| CDs | las tres variantes | no corrido | no corrido | no corrido | no corrido |
+
+Con 10 beams solo hay 10 predicciones, así que HR@20 y NDCG@20 de la celda 26 son iguales a @10.
+
+SFT: loss de `valid` 0,7311 / 0,5729 / 0,6205 por época; se usa la época 2 (celda 18), igual que en nuestro BIGRec (0,5748 en la época 2).
+
+**Comparación pareada** (fila a fila sobre las mismas 6738 filas; `analisis_pareado.py`, que escribe [`../../resultados/latentr3/Toys_and_Games/analisis_pareado.json`](../../resultados/latentr3/Toys_and_Games/analisis_pareado.json); McNemar exacto y bootstrap de 2000 muestras, semilla 0):
+
+| Comparación | HR@5: filas que gana / pierde (p) | HR@10: gana / pierde (p) | Diferencia de NDCG@10 (IC95) |
+|---|---|---|---|
+| only SFT → LatentR3 | 9 / 4 (0,27) | 7 / 7 (1,0) | +0,00016 (−0,00030; +0,00063) |
+| Nuestro BIGRec → only SFT | 75 / 82 (0,63) | 111 / 106 (0,79) | +0,00038 (−0,00194; +0,00269) |
+| Nuestro D3 → D3 + LatentR3 | 98 / 79 (0,18) | 104 / 112 (0,63) | +0,00002 (−0,00233; +0,00220) |
+| LatentR3 → D3 + LatentR3 | 141 / 51 (6e-11) | 77 / 27 (1e-6) | +0,00783 (+0,00580; +0,01005) |
+
+Qué muestran:
+- **El RL no cambia las métricas en Toys.** Entre el SFT y el RL ninguna diferencia es significativa. El RL reordena las listas (solo 2505 de 6738 son idénticas, aunque 6402 conservan el top-1), pero casi no cambia los aciertos. El paper reporta +2 % en HR@5 y +4 % en HR@10 entre "only SFT" y BIGRec + LatentR3 (Tablas 1 y 2).
+- **El RL sí optimizó su objetivo:** la recompensa de entrenamiento (−PPL) pasa de −1,615 a −1,555 de media en tramos de 200 pasos, sin valores no finitos y con `grad_norm` estable en ~0,004. Como cada paso usa prompts nuevos (1 época), no es memorización, pero esa mejora de la perplejidad no se traduce en aciertos del top-10.
+- **Los pesos se movieron poco:** solo cambian los 6 tensores de LatentRATT (de 344). El cambio relativo en norma es de 0,3 % a 0,8 % en las matrices y de 2,6 % a 23 % en los sesgos (`value.bias`). Era lo esperable con lr 1e-5 (ver "Problemas conocidos").
+- **El "only SFT" iguala a nuestro BIGRec:** en el SFT, el token latente no aporta nada medible.
+- **D3 + LatentR3 coincide con el paper** (0.0898 / 0.1152 / 0.0670 / 0.0752), pero no supera a nuestro D3. Toda la ganancia sobre LatentR3 viene de la decodificación (`length_penalty` 0), igual que de BIGRec a D3.
+- La "mejora relativa media" de la celda 28 (+0,4 % del RL sobre BIGRec y +1,1 % de D3 + LatentR3 sobre D3) está dentro del ruido.
+- No está aislado si la falta de efecto se debe al lr (1e-5), a la semilla única, a las 2 GPUs simuladas o al entorno.
 
 ### Valores del paper
 
@@ -220,12 +251,13 @@ Las celdas se numeran desde 0 (posición en el JSON del notebook).
 
 | Qué | Ruta local (no versionada) | Copia versionada | Celda |
 |---|---|---|---|
-| Log del SFT (loss de `valid` por época, tiempos, memoria) | `checkpoints/latentr3/<categoría>/sft/entrenamiento.json` | aún no hay | 18 |
-| Predicciones del SFT | `.../sft/predicciones/test/` (`final_result.json`, `registro.json`) | aún no hay | 20 |
-| Log del RL (recompensa por paso, tiempos, memoria) | `.../rl_5e-4/entrenamiento.json` | aún no hay | 22 |
-| Predicciones de LatentR3 y de D3 + LatentR3 | `.../rl_5e-4/predicciones/test/` y `test_d3/` | aún no hay | 24 |
-| Métricas de las tres variantes (con 0 títulos fuera del catálogo y verificación con `calc.py`) | calculadas desde los `final_result.json` | aún no hay | 26 |
-| Comparación con el paper y con nuestro BIGRec y D3 | calculada en el notebook | aún no hay | 28 |
+| Log del SFT (loss de `valid` por época, tiempos, memoria) | `checkpoints/latentr3/<categoría>/sft/entrenamiento.json` | [`resultados/latentr3/Toys_and_Games/sft/entrenamiento.json`](../../resultados/latentr3/Toys_and_Games/sft/entrenamiento.json) | 18 |
+| Predicciones del SFT | `.../sft/predicciones/test/` (`final_result.json`, `registro.json`) | [`.../sft/predicciones/test/`](../../resultados/latentr3/Toys_and_Games/sft/predicciones/test/) | 20 |
+| Log del RL (recompensa por paso, tiempos, memoria) | `.../rl_1e-5/entrenamiento.json` | [`.../rl_1e-5/entrenamiento.json`](../../resultados/latentr3/Toys_and_Games/rl_1e-5/entrenamiento.json) | 22 |
+| Predicciones de LatentR3 y de D3 + LatentR3 | `.../rl_1e-5/predicciones/test/` y `test_d3/` | [`.../rl_1e-5/predicciones/`](../../resultados/latentr3/Toys_and_Games/rl_1e-5/predicciones/) | 24 |
+| Métricas de las tres variantes (con 0 títulos fuera del catálogo y verificación con `calc.py`) | calculadas desde los `final_result.json` | se recalculan desde las predicciones versionadas | 26 |
+| Comparación con el paper y con nuestro BIGRec y D3 | calculada en el notebook | se recalcula desde las predicciones versionadas | 28 |
+| Comparación pareada (McNemar, bootstrap), recompensa por tramos y cambio de pesos SFT → RL | `analisis_pareado.py` (fuera del notebook) | [`.../analisis_pareado.json`](../../resultados/latentr3/Toys_and_Games/analisis_pareado.json) | no hay celda |
 | Prueba de tiempo en Toys | scripts aparte, hoy no están en el repo | [`../../resultados/latentr3/_tiempo/`](../../resultados/latentr3/_tiempo/) (`tiempos.json`, `sft1.json`, `sft2.json`, `gen.json`, `rl.json`) y [`../../resultados/latentr3/_tiempo_rl/tiempos.json`](../../resultados/latentr3/_tiempo_rl/tiempos.json) | no hay celda |
 
 Los pesos (`modelo/`) y los estados del entrenador (`trainer/`) no se versionan.
@@ -236,6 +268,9 @@ Los pesos (`modelo/`) y los estados del entrenador (`trainer/`) no se versionan.
 |---|---|---|---|
 | `train_noise_grpo.py` y `noise_eval.py` fallan con `ModuleNotFoundError` | `model.py` importa `noisy_layer`, que no existe en el repo | P1 | Ninguno |
 | `grpo_eval.sh` no corre | Llama a `src/grpo_full/noise_eval.py`, que no existe (la ruta correcta es `src/grpo_attention_tuning/noise_eval.py`) | No se usa; la evaluación está en `latentr3.py` | Ninguno |
+| La evaluación del SFT de Toys (celda 20, lotes de 24) no cabe en 16 GB | El prompt más largo de un lote de 24 lleva el pico a ~14,3 GB (lote 3 de `test`, prompts de hasta 290 tokens): sin margen, `OutOfMemoryError` con 1,62 GB reservados sin usar (2026-11-25, también con el kernel recién reiniciado) | Lotes de 12 (`BATCH_GEN_SFT`): las 120 filas más largas de Toys llegan a 9,63 GB, sin títulos fuera del catálogo y sin cambios en los pesos. `expandable_segments` se descartó: el lote de 24 cabe, pero los pesos cambian durante la generación (lote 3) y desde el lote 5 son NaN, sin error, y todas las predicciones siguientes salen fuera del catálogo (esa corrida quedó en `checkpoints/latentr3/Toys_and_Games/sft/predicciones/test_corrupta_expandable/`, con HR@10 0,0010; no es un resultado) | Lotes de 12: algunas filas pueden cambiar su top-10 (ver Adaptaciones) |
+| El RL con lr 5e-4 divergió en Toys | Estable hasta el paso ~98 (`recompensa_s1` −1,61, `grad_norm` ~0,004). Con el lr del warmup sobre ~2,5e-4, `grad_norm` crece 10× en 8 pasos y la recompensa se dispara; en los pasos 300–400 la mediana de `recompensa_s1` queda en −3e11 a −2e12 con `grad_norm` ~0,06 (2026-11-25) | Se detuvo en el paso ~400 (checkpoints en `rl_5e-4/trainer/`) y se probó lr 1e-4, de la grilla de los autores | El lr no es el que pudieron usar los autores en Toys (no está publicado) |
+| El RL con lr 1e-4 también divergió en Toys | Estable hasta el paso ~220, pero sin mejorar la recompensa; `grad_norm` sube desde el ~220 y la recompensa se dispara desde el ~245; en el checkpoint 400 la mediana de `recompensa_s1` es −1422 y la de `grad_norm` 11,38 (2026-11-25). Las dos corridas se rompen con la misma suma acumulada de lr (~0,013), lo que sugiere que depende de cuánto se alejan los pesos de LatentRATT y no del lr en sí | Un script de vigilancia lo detuvo en el paso 400 (checkpoints en `rl_1e-4/trainer/`); se usa lr 1e-5, también de la grilla, que suma ~0,0084 en la corrida completa | Con 1e-5 los pesos se mueven poco: es probable que el RL quede cerca del modelo del SFT |
 | `attention_grpo.sh` no calcula métricas | El script termina sin llamar a `calc.py` | Las métricas se calculan en la celda 26 y se verifican con `gao` de `calc.py` | Ninguno |
 | El SFT no cabe en 16 GB | Pesos, gradientes y estados de AdamW ocupan 11,6 GB fijos más ~2,8 GB transitorios en el backward; el error de `_tiempo/tiempos.json` muestra 14,13 GiB asignados de 15,92 GiB; achicar el micro-batch casi no ayuda (pico de 14,43 GB con micro-batch 2 y 14,61 GB con micro-batch 1, sin output guardado) | F3 (estados de AdamW en la RAM). El asignador sin fragmentación (`expandable_segments`) no basta (demanda ~15,1 GB) | Ninguno (bit a bit idéntico a AdamW tras 5 pasos); +~0,9 s por paso |
 | El RL con 1 GPU falla en `swap_adjacent_blocks` | La ventaja de la Eq. 7 necesita 2 grupos por micro-paso | P3 | El gradiente es el mismo que con 2 GPUs; cambian el RNG del ruido y el redondeo |

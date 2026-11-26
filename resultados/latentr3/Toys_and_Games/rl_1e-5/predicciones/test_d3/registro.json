@@ -1,0 +1,8 @@
+{
+ "filas": 6738,
+ "segundos": 2325.4405150413513,
+ "batch_size": 12,
+ "length_penalty": 0.0,
+ "modelo": "/run/host/var/home/maurice/Documents/University/2026-2/Sistemas Recomendadores/Proyecto/iic3633-proyecto-latentr3/checkpoints/latentr3/Toys_and_Games/rl_1e-5/modelo",
+ "memoria_max_gb": 9.011948108673096
+}

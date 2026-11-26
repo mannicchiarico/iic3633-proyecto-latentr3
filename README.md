@@ -15,7 +15,7 @@ El repositorio contiene los notebooks, el código de los autores, el código ada
 | D3 | Solo Toys_and_Games; Games e Instruments se evalúan en Colab | [notebooks/d3/README.md](notebooks/d3/README.md) |
 | Base | Corrido en las 4 categorías | [notebooks/base_cot/README.md](notebooks/base_cot/README.md) |
 | COT | Solo Toys_and_Games | [notebooks/base_cot/README.md](notebooks/base_cot/README.md) |
-| LatentR3 | Implementado, sin entrenamiento completo; solo hay una prueba de tiempo en Toys_and_Games. Alcance: Toys y CDs | [notebooks/latentr3/README.md](notebooks/latentr3/README.md) |
+| LatentR3 | Corrido en Toys_and_Games (SFT + RL con lr 1e-5); en Toys el RL no mejora sobre el SFT. Falta CDs. Alcance: Toys y CDs | [notebooks/latentr3/README.md](notebooks/latentr3/README.md) |
 | Multimodal (SASRec + SigLIP) | Implementado; solo está hecha la extracción de URLs de imágenes | [notebooks/multimodal/README.md](notebooks/multimodal/README.md) |
 
 Las tareas que corren en Colab gratis (evaluación de BIGRec/D3 y la parte multimodal) están en [colab/README.md](colab/README.md).

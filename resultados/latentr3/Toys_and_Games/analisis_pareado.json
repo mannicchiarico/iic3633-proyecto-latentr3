@@ -1,0 +1,196 @@
+{
+ "categoria": "Toys_and_Games",
+ "bootstrap": {
+  "muestras": 2000,
+  "semilla": 0
+ },
+ "pares": {
+  "only SFT -> LatentR3 (RL)": {
+   "listas idénticas": 2505,
+   "mismo conjunto de 10": 4264,
+   "mismo top-1": 6402,
+   "filas": 6738,
+   "@5": {
+    "HR only SFT": 0.07598693974473138,
+    "HR LatentR3 (RL)": 0.07672899970317602,
+    "filas que gana": 9,
+    "filas que pierde": 4,
+    "McNemar exacto p": 0.266845703125,
+    "dif. NDCG": 0.00041306464025648996,
+    "dif. NDCG IC95 bootstrap": [
+     -0.00010575608181437595,
+     0.0009337781523143119
+    ]
+   },
+   "@10": {
+    "HR only SFT": 0.10670822202433956,
+    "HR LatentR3 (RL)": 0.10670822202433956,
+    "filas que gana": 7,
+    "filas que pierde": 7,
+    "McNemar exacto p": 1.0,
+    "dif. NDCG": 0.00015839848250801916,
+    "dif. NDCG IC95 bootstrap": [
+     -0.0003022785370384502,
+     0.0006285715088557107
+    ]
+   }
+  },
+  "BIGRec -> only SFT": {
+   "listas idénticas": 0,
+   "mismo conjunto de 10": 29,
+   "mismo top-1": 3385,
+   "filas": 6738,
+   "@5": {
+    "HR BIGRec": 0.07702582368655388,
+    "HR only SFT": 0.07598693974473138,
+    "filas que gana": 75,
+    "filas que pierde": 82,
+    "McNemar exacto p": 0.6321848782933385,
+    "dif. NDCG": -0.00020204500454767748,
+    "dif. NDCG IC95 bootstrap": [
+     -0.002550421668949505,
+     0.0021800052238191486
+    ]
+   },
+   "@10": {
+    "HR BIGRec": 0.10596616206589493,
+    "HR only SFT": 0.10670822202433956,
+    "filas que gana": 111,
+    "filas que pierde": 106,
+    "McNemar exacto p": 0.7860523224857786,
+    "dif. NDCG": 0.00037858835561268124,
+    "dif. NDCG IC95 bootstrap": [
+     -0.0019441555700167568,
+     0.0026945900079702427
+    ]
+   }
+  },
+  "BIGRec -> LatentR3 (RL)": {
+   "listas idénticas": 0,
+   "mismo conjunto de 10": 26,
+   "mismo top-1": 3372,
+   "filas": 6738,
+   "@5": {
+    "HR BIGRec": 0.07702582368655388,
+    "HR LatentR3 (RL)": 0.07672899970317602,
+    "filas que gana": 80,
+    "filas que pierde": 82,
+    "McNemar exacto p": 0.9374089336007709,
+    "dif. NDCG": 0.0002110196357088124,
+    "dif. NDCG IC95 bootstrap": [
+     -0.0022699754628917185,
+     0.002518802274125153
+    ]
+   },
+   "@10": {
+    "HR BIGRec": 0.10596616206589493,
+    "HR LatentR3 (RL)": 0.10670822202433956,
+    "filas que gana": 111,
+    "filas que pierde": 106,
+    "McNemar exacto p": 0.7860523224857786,
+    "dif. NDCG": 0.0005369868381207004,
+    "dif. NDCG IC95 bootstrap": [
+     -0.0017750091346643857,
+     0.0027681568435045808
+    ]
+   }
+  },
+  "D3 -> D3 + LatentR3": {
+   "listas idénticas": 1,
+   "mismo conjunto de 10": 28,
+   "mismo top-1": 3617,
+   "filas": 6738,
+   "@5": {
+    "HR D3": 0.08726625111308994,
+    "HR D3 + LatentR3": 0.09008607895517957,
+    "filas que gana": 98,
+    "filas que pierde": 79,
+    "McNemar exacto p": 0.17589930239341015,
+    "dif. NDCG": 0.0012904252063812443,
+    "dif. NDCG IC95 bootstrap": [
+     -0.0010579883248472786,
+     0.0037350113954925097
+    ]
+   },
+   "@10": {
+    "HR D3": 0.11531611754229741,
+    "HR D3 + LatentR3": 0.11412882160878599,
+    "filas que gana": 104,
+    "filas que pierde": 112,
+    "McNemar exacto p": 0.6339701087145501,
+    "dif. NDCG": 2.3551038912162113e-05,
+    "dif. NDCG IC95 bootstrap": [
+     -0.002333676628958527,
+     0.0022046159212500086
+    ]
+   }
+  },
+  "LatentR3 (RL) -> D3 + LatentR3": {
+   "listas idénticas": 3,
+   "mismo conjunto de 10": 1159,
+   "mismo top-1": 2793,
+   "filas": 6738,
+   "@5": {
+    "HR LatentR3 (RL)": 0.07672899970317602,
+    "HR D3 + LatentR3": 0.09008607895517957,
+    "filas que gana": 141,
+    "filas que pierde": 51,
+    "McNemar exacto p": 5.947693119558102e-11,
+    "dif. NDCG": 0.009666575330544656,
+    "dif. NDCG IC95 bootstrap": [
+     0.00697899771282681,
+     0.012405137137041066
+    ]
+   },
+   "@10": {
+    "HR LatentR3 (RL)": 0.10670822202433956,
+    "HR D3 + LatentR3": 0.11412882160878599,
+    "filas que gana": 77,
+    "filas que pierde": 27,
+    "McNemar exacto p": 9.701730804528467e-07,
+    "dif. NDCG": 0.007828397592729576,
+    "dif. NDCG IC95 bootstrap": [
+     0.0058013208176408895,
+     0.010053338298503826
+    ]
+   }
+  }
+ },
+ "recompensa RL": {
+  "pasos": 1684,
+  "todas finitas": true,
+  "recompensa media por tramo de 200 pasos": [
+   -1.614552662037313,
+   -1.5840044821053743,
+   -1.5902041599154473,
+   -1.582113832384348,
+   -1.5729659548774362,
+   -1.5612453784793616,
+   -1.5657147363945842,
+   -1.5533753694221377,
+   -1.5546074999230248
+  ],
+  "grad_norm mediana por tramo de 200 pasos": [
+   0.004119873046875,
+   0.0040130615234375,
+   0.0043792724609375,
+   0.004150390625,
+   0.004180908203125,
+   0.004058837890625,
+   0.0041046142578125,
+   0.004058837890625,
+   0.00421142578125
+  ]
+ },
+ "pesos SFT -> RL": {
+  "tensores": 344,
+  "cambio relativo (norma) de los tensores que cambian": {
+   "attention.key.bias": 0.025566356256604195,
+   "attention.key.weight": 0.0036903065629303455,
+   "attention.query.bias": 0.044972047209739685,
+   "attention.query.weight": 0.0028762370347976685,
+   "attention.value.bias": 0.22932158410549164,
+   "attention.value.weight": 0.008027375675737858
+  }
+ }
+}
