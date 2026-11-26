@@ -29,11 +29,11 @@ No hace falta instalar nada en tu computador ni clonar el repo: el notebook lo h
 
 **Qué hace:** con cada modelo de BIGRec, genera el top-10 de todas las filas de `test` con BIGRec (`length_penalty` 1,0) y con D3 (0,0). La T4 no tiene bf16 en hardware, así que se evalúa en **fp16**: es una desviación respecto de los autores y queda registrada sola.
 
-| Sesión | Qué corre | Duración estimada en una T4 (supuesto: 2–3× más lenta que la GPU local) |
+| Sesión | Qué corre | Duración en una T4 (medida en la sesión 1: 0,92 s por fila, 3,6× la GPU local) |
 |---|---|---|
-| 1 | **Validación:** BIGRec Toys, comparado con la corrida local | 1,0–1,5 h |
-| 2 | Video_Games: BIGRec y D3 | 2,7–4,0 h |
-| 3 | Musical_Instruments: BIGRec y D3 | 2,4–3,6 h |
+| 1 | **Validación:** BIGRec Toys, comparado con la corrida local | 1,7 h (medido; aprobada el 2026-11-26) |
+| 2 | Video_Games: BIGRec y D3 | ≈ 4,8 h (estimado; si se corta, retoma por partes) |
+| 3 | Musical_Instruments: BIGRec y D3 | ≈ 4,2 h (estimado) |
 
 Si un modelo aún no está en Drive, el notebook se salta ese dataset; vuelve a correrlo cuando quien coordina avise que lo subió.
 
