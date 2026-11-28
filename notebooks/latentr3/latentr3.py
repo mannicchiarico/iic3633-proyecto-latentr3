@@ -325,15 +325,22 @@ def _escribir(ruta, datos):
 # ---------- Etapa 1: SFT ----------
 
 def entrenar_sft(categoria, base, salida, sample_train=-1, sample_valid=-1, micro_batch=MICRO_SFT, checkpointing=True,
-                 optim_cpu=True, borrar_intermedios=True, modelo_base=BASE_MODEL):
+                 optim_cpu=True, borrar_intermedios=True, modelo_base=BASE_MODEL, crear_tokenizer=None,
+                 crear_dataset=None, crear_modelo=None):
     """SFT de LatentR3 en una categoría (latent_attention_train.py). Retoma desde el último checkpoint y se salta si
     ya terminó.
 
     Guarda en `salida`: `trainer/` (checkpoints por época, se borran al final), `modelo/` (la época con menor
     eval_loss, con LatentRATT y el tokenizer con <|Thought|>) y `entrenamiento.json`. micro_batch, checkpointing y
     optim_cpu solo cambian la memoria y la velocidad, no el batch efectivo ni el método (README.md, "Adaptaciones").
+    crear_tokenizer, crear_dataset y crear_modelo (por defecto tokenizer_con_latente, dataset_sft y
+    modelo_base_latente) permiten entrenar una variante con el mismo procedimiento (la usa
+    ../multimodal/latentr3_mm.py).
     """
     from transformers import Trainer, EarlyStoppingCallback, DataCollatorForSeq2Seq
+    crear_tokenizer = crear_tokenizer or tokenizer_con_latente
+    crear_dataset = crear_dataset or dataset_sft
+    crear_modelo = crear_modelo or modelo_base_latente
     import transformers
     dir_trainer, dir_modelo = os.path.join(salida, "trainer"), os.path.join(salida, "modelo")
     if entrenado(salida):
@@ -345,10 +352,10 @@ def entrenar_sft(categoria, base, salida, sample_train=-1, sample_valid=-1, micr
     assert BATCH_SIZE % micro_batch == 0
     os.makedirs(salida, exist_ok=True)
 
-    tokenizer = tokenizer_con_latente(modelo_base)
-    train = dataset_sft(tokenizer, buscar_archivo(base, "train", categoria), categoria, sample_train)
-    valid = dataset_sft(tokenizer, buscar_archivo(base, "valid", categoria), categoria, sample_valid)
-    modelo = modelo_base_latente(tokenizer, modelo_base)
+    tokenizer = crear_tokenizer(modelo_base)
+    train = crear_dataset(tokenizer, buscar_archivo(base, "train", categoria), categoria, sample_train)
+    valid = crear_dataset(tokenizer, buscar_archivo(base, "valid", categoria), categoria, sample_valid)
+    modelo = crear_modelo(tokenizer, modelo_base)
     args = args_sft(dir_trainer, micro_batch, checkpointing)
     cronometro = _cronometro()
     trainer = Trainer(
@@ -399,15 +406,27 @@ def entrenar_sft(categoria, base, salida, sample_train=-1, sample_valid=-1, micr
 
 # ---------- Etapa 2: LR-GRPO ----------
 
+def _modelo_para_rl(dir_sft):
+    modelo = LatentModel.from_pretrained(dir_sft, torch_dtype=torch.bfloat16)   # L69-71
+    modelo.attention.end_k = -1
+    return modelo
+
+
 def entrenar_rl(categoria, base, salida, dir_sft, sample=-1, checkpointing=False, borrar_intermedios=True, lr=LR_RL,
-                guardar_checkpoints=False):
+                guardar_checkpoints=False, crear_dataset=None, cargar_modelo=None, congelar=None, clase_trainer=None):
     """LR-GRPO de LatentR3 (train_noise_grpo.py con el trainer parcheado, 2 GPUs simuladas) desde el modelo del SFT.
 
     Solo entrena LatentRATT. Retoma desde el último checkpoint (cada 200 pasos) y se salta si ya terminó. Guarda en
     `salida`: `trainer/` (se borra al final), `modelo/` (el modelo tras 1 época, como los autores) y
     `entrenamiento.json` con la recompensa por paso. Con guardar_checkpoints=True conserva todos los checkpoints
     (sin save_total_limit) y no borra `trainer/`, para revisarlos o evaluarlos después.
+    crear_dataset, cargar_modelo, congelar y clase_trainer (por defecto dataset_rl, LatentModel.from_pretrained,
+    congelar_llm y NoiseGRPORecTrainer) permiten entrenar una variante (la usa ../multimodal/latentr3_mm.py).
     """
+    crear_dataset = crear_dataset or dataset_rl
+    cargar_modelo = cargar_modelo or _modelo_para_rl
+    congelar = congelar or congelar_llm
+    clase_trainer = clase_trainer or NoiseGRPORecTrainer
     import transformers
     import trl
     dir_trainer, dir_modelo = os.path.join(salida, "trainer"), os.path.join(salida, "modelo")
@@ -420,13 +439,12 @@ def entrenar_rl(categoria, base, salida, dir_sft, sample=-1, checkpointing=False
     os.makedirs(salida, exist_ok=True)
 
     tokenizer = para_generar(tokenizer_con_latente(dir_sft))   # padding a la izquierda (L87-89)
-    train = dataset_rl(tokenizer, buscar_archivo(base, "train", categoria), categoria, sample)
-    modelo = LatentModel.from_pretrained(dir_sft, torch_dtype=torch.bfloat16)   # L69-71
-    modelo.attention.end_k = -1
-    entrenables = congelar_llm(modelo)
+    train = crear_dataset(tokenizer, buscar_archivo(base, "train", categoria), categoria, sample)
+    modelo = cargar_modelo(dir_sft)
+    entrenables = congelar(modelo)
     trie = get_prefix_data(buscar_archivo(base, "info", categoria), tokenizer)
     cronometro = _cronometro()
-    trainer = NoiseGRPORecTrainer(
+    trainer = clase_trainer(
         prefix_allowed_tokens_fn=lambda _, ids: trie.get(get_hash(ids), []), model=modelo,
         reward_funcs=[recompensa_exact_match], args=config_rl(dir_trainer, checkpointing=checkpointing, lr=lr,
                        **({"save_total_limit": None} if guardar_checkpoints else {})),
@@ -500,8 +518,12 @@ def generar(modelo, tokenizer, encodings, trie, length_penalty, num_beams=NUM_BE
     restriccion = CFEnhancedLogitsProcessor(
         guidance_scale=1.0, cf_logits=None, cf_dict=None, unconditional_ids=None, model=modelo, tokenizer=tokenizer,
         prefix_allowed_tokens_fn=lambda _, prefijo: trie.get(get_hash(prefijo), []), num_beams=num_beams)
+    # Variante multimodal (../multimodal/latentr3_mm.py): los ids de los ítems del historial van como argumento extra;
+    # generate los replica por beam y el modelo los usa al procesar el prompt
+    extra = ({"item_ids": torch.tensor([e["item_ids"] for e in encodings], device=modelo.device)}
+             if "item_ids" in encodings[0] else {})
     salida = modelo.generate(torch.tensor(ids, device=modelo.device),
-                             attention_mask=torch.tensor(mascara, device=modelo.device),
+                             attention_mask=torch.tensor(mascara, device=modelo.device), **extra,
                              generation_config=config, return_dict_in_generate=True,
                              logits_processor=LogitsProcessorList([TemperatureLogitsWarper(temperature=1.0), restriccion]))
     textos = tokenizer.batch_decode(salida.sequences[:, largo:], skip_special_tokens=True)
@@ -509,12 +531,15 @@ def generar(modelo, tokenizer, encodings, trie, length_penalty, num_beams=NUM_BE
 
 
 def evaluar_categoria(categoria, base, dir_modelo, dir_pred, batch_size, length_penalty, sample=-1,
-                      filas_por_parte=FILAS_POR_PARTE):
+                      filas_por_parte=FILAS_POR_PARTE, crear_dataset=None, cargar_modelo=None):
     """Genera el top-10 de cada fila de test con el modelo de `dir_modelo` y lo guarda por partes en `dir_pred`.
 
     Se salta las partes ya escritas, así que se puede retomar. Al final une las partes en `final_result.json`, con
     el formato que lee calc.py de los autores. El prompt es el de LatentRDataset (= D3Dataset del RL; V3).
+    crear_dataset y cargar_modelo (por defecto dataset_sft y cargar_modelo_latente) permiten evaluar una variante.
     """
+    crear_dataset = crear_dataset or dataset_sft
+    cargar_modelo = cargar_modelo or cargar_modelo_latente
     final = os.path.join(dir_pred, "final_result.json")
     if os.path.isfile(final):
         print(f"{categoria}: ya evaluado en {final}; se salta.")
@@ -523,7 +548,7 @@ def evaluar_categoria(categoria, base, dir_modelo, dir_pred, batch_size, length_
         raise FileNotFoundError(f"Falta el modelo en {dir_modelo}.")
     os.makedirs(dir_pred, exist_ok=True)
     tokenizer = para_generar(tokenizer_con_latente(dir_modelo))
-    test = dataset_sft(tokenizer, buscar_archivo(base, "test", categoria), categoria, sample=sample, test=True)
+    test = crear_dataset(tokenizer, buscar_archivo(base, "test", categoria), categoria, sample=sample, test=True)
     encodings = [test[i] for i in range(len(test))]
     filas = test.get_all()
     trie = get_prefix_data(buscar_archivo(base, "info", categoria), tokenizer)
@@ -541,7 +566,7 @@ def evaluar_categoria(categoria, base, dir_modelo, dir_pred, batch_size, length_
         if os.path.isfile(ruta):
             continue
         if modelo is None:
-            modelo = cargar_modelo_latente(dir_modelo, tokenizer)
+            modelo = cargar_modelo(dir_modelo, tokenizer)
             torch.cuda.reset_peak_memory_stats()
         ini, fin = p * filas_por_parte, min((p + 1) * filas_por_parte, len(encodings))
         inicio = time.time()

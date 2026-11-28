@@ -2,7 +2,7 @@
 
 Primer paso de la versión multimodal del proyecto: medir qué ítems tienen imagen, representar las imágenes de Toys con un codificador visual preentrenado y comparar un baseline secuencial con y sin esas features. Es la base sobre la que se mediría el aporte de las imágenes a LatentR3.
 
-**Estado:** implementado y sin correr. Solo está hecha la extracción de las URLs desde la metadata (`items/`, ver "Datos"). Corre en Colab (compañero M, ver [`../../colab/README.md`](../../colab/README.md)) o en local.
+**Estado:** `multimodal.ipynb` corrido en Colab por el compañero M (2026-11-25; resultados importados a `resultados/multimodal/` el 2026-11-27). Corre en Colab ([`../../colab/README.md`](../../colab/README.md)) o en local. **LatentR3-SFT + SigLIP** (`latentr3_mm.ipynb`, al final de este README): implementado y verificado en CPU el 2026-11-28; falta correrlo en la GPU.
 
 ## Fuente y versión
 
@@ -79,3 +79,60 @@ Sin resultados propios: el notebook no se ha corrido. La referencia es el SASRec
 ## Dónde quedan los resultados
 
 Copias versionadas (las importa `colab/importar_resultados.py`): `resultados/multimodal/cobertura/` y `resultados/multimodal/Toys_and_Games/` (manifiestos y resultados de SASRec + SigLIP). No se versionan las imágenes, `imagenes.zip` ni `siglip.npz`.
+
+## LatentR3-SFT + SigLIP (`latentr3_mm.ipynb`)
+
+Extensión propia: no es parte del paper y se reporta aparte de la replicación. Es LatentR3 con una imagen por ítem del historial, en Toys. Es el mismo SFT y la misma evaluación de [`../latentr3/latentr3.ipynb`](../latentr3/README.md); el RL es opcional. El código está en `latentr3_mm.py`, que reutiliza `../latentr3/latentr3.py`.
+
+### Método
+
+- **Prompt:** el de LatentR3, con el marcador `<|image_pad|>` después de cada título del historial: `"título 1" <|image_pad|>, "título 2" <|image_pad|>, ...`.
+- **Por qué ese token:** `<|image_pad|>` ya existe en el vocabulario de Qwen2.5 (id 151655; viene de Qwen2-VL y el modelo de texto no lo usa). No se agrega un token nuevo, porque el código de los autores reconoce el token latente como el último del vocabulario (`autores/model.py`, `generate_embs`; `LogitProcesser.py`, `get_prefix_data`).
+- **Imágenes:** el embedding de cada marcador se reemplaza por `proyector(SigLIP(imagen))`, con un proyector lineal de 1152 a 1536. Los ítems sin imagen (9,5 % de Toys) usan un vector aprendido `sin_imagen`, compartido, así que lo único propio de cada ítem que entra por esos tokens es visual. Los embeddings son los de `siglip.npz`, congelados; sus filas coinciden con `item_id`.
+- **Las dos pasadas:** el reemplazo se hace en las dos pasadas del modelo, así que LatentRATT calcula el token latente viendo las imágenes. Es el mismo mecanismo que los autores usan para `<|Thought|>` (sobrescribir la fila de un marcador) y el que usa Qwen2-VL con `<|image_pad|>` (`masked_scatter` en `transformers/models/qwen2_vl/modeling_qwen2_vl.py`).
+- **Entrenamiento:** el SFT de LatentR3 sin cambios (lr 3e-4, batch 128, hasta 3 épocas, paciencia 1, F3, bf16), con el proyector y `sin_imagen` entrenados junto con el modelo.
+- **Evaluación:** 10 beams restringidos por el trie, `length_penalty` 1,0, lotes de 12.
+- **Ablación:** se evalúa también con todas las imágenes reemplazadas por `sin_imagen`, para saber si el modelo usa las imágenes.
+- **RL (opcional, `CORRER_RL`):** el de LatentR3 con lr 1e-5; solo entrena LatentRATT y deja congelados el proyector y `sin_imagen`.
+
+Inspiración (decisiones del proyecto del 2026-11-28):
+- el token del ítem junto a su título viene del "hybrid prompt" de LLaRA ([arXiv 2312.02445](https://arxiv.org/abs/2312.02445));
+- el proyector lineal, de LLaVA ([arXiv 2304.08485](https://arxiv.org/abs/2304.08485)). LLaVA-1.5 ([arXiv 2310.03744](https://arxiv.org/abs/2310.03744)) y Honeybee ([arXiv 2312.06742](https://arxiv.org/abs/2312.06742)) reportan que un MLP mejora poco;
+- un token por imagen desde el embedding global, de ClipCap ([arXiv 2111.09734](https://arxiv.org/abs/2111.09734));
+- la ablación, de NoteLLM-2 ([arXiv 2405.16789](https://arxiv.org/abs/2405.16789)), que reporta que los modelos multimodales ajustados de punta a punta tienden a ignorar lo visual.
+
+### Cambios en `../latentr3/latentr3.py`
+
+`entrenar_sft`, `evaluar_categoria` y `entrenar_rl` aceptan funciones alternativas para el tokenizer, el dataset, el modelo, el congelamiento y la clase del trainer. `generar` pasa `item_ids` a `generate` si los encodings los traen. Con los valores por defecto, el comportamiento es el de siempre: V5 y V6 dan lo mismo que antes (medido fuera del notebook el 2026-11-28, sin output guardado).
+
+### Verificaciones (celda 5, solo CPU)
+
+Medidas fuera del notebook el 2026-11-28, en CPU (sin output guardado; la celda 5 las repite):
+
+| | Qué comprueba | Resultado |
+|---|---|---|
+| VM1 | `<|image_pad|>` = 151655, un solo token; `<|Thought|>` = 151665, el último; ningún título contiene un token especial; ningún prefijo del trie usa 151655 | pasa |
+| VM2 | En 200 filas por split, sin los marcadores, el prompt es el de `LatentRDataset` y el de `D3Dataset`; marcadores = ítems del historial | pasa; ~11–15 tokens extra por fila |
+| VM3 | Con el embedding del propio marcador en lugar de la imagen, los logits son los de `LatentModel`; el gradiente llega al proyector y a `sin_imagen` | dif. máx. 0.0 |
+| VM4 | `generate` con 3 beams recibe `item_ids` una sola vez, con forma [B·3, 10]; guardar y cargar el modelo | forma (6, 10); dif. de logits 2,4e-7 |
+| VM6 | El trainer del RL pasa los `item_ids` de cada grupo (8 filas iguales) en `_puntuar_grupo` y `compute_loss`; tras un paso solo cambia `attention.*` | pasa |
+
+Largos de los splits completos con los marcadores (medidos fuera del notebook): media / p99 / máximo de 167,33 / 311 / 396 tokens en `train` (sin marcadores, la media es 155,92), 180,38 / 316 / 363 en `valid` y 175,45 / 299 / 370 en `test`. Ninguna fila llega a 512 (`CUTOFF_LEN`). Si alguna llegara, el dataset falla en vez de truncar.
+
+### Cómo correrlo
+
+1. Entorno `.venv-rocm` o `.venv-cuda`. Directorio de trabajo: `notebooks/multimodal/`. Hacen falta `checkpoints/multimodal/Toys_and_Games/siglip.npz` (se verifica su sha256), `repo_latentr3/` en el commit `c558b44` y Qwen2.5-1.5B en la caché de Hugging Face.
+2. Correr las celdas 2–3 (entorno) y 5 (verificaciones, segundos).
+3. Celda 7 (opcional): prueba rápida con 1024 filas, evaluación de 100 filas normal y sin imágenes, y 2 pasos de RL. Duración estimada de 15–20 min (sin medir). Escribe en `checkpoints/latentr3_mm/Toys_and_Games/_prueba/` y lo borra al final.
+4. Celda 9: SFT, ~7,2 h estimadas (sin medir). Son las 6,73 h del SFT de texto escaladas por tokens por fila, 167,33 frente a 155,92. GPU ~10 GB, RAM ~11 GB.
+5. Celdas 11 y 12: evaluación normal y ablación, ~40 min cada una (estimado).
+6. Celda 14: métricas verificadas con `calc.py`, comparación pareada con el only SFT de texto, BIGRec y D3, y grupos por popularidad y por imagen en el historial. También copia los resultados a `resultados/`.
+7. Celda 16 (opcional): RL con `CORRER_RL = True`, ~7,2 h más ~1,4 h de evaluación (estimado).
+
+Retomar: volver a correr la celda. El SFT y el RL continúan desde su último checkpoint, y las evaluaciones se saltan las partes ya escritas.
+
+### Dónde quedan los resultados
+
+- **Local (no versionado):** `checkpoints/latentr3_mm/Toys_and_Games/`, con `sft/modelo/`, `sft/entrenamiento.json`, `sft/predicciones/test/` y `sft/predicciones/test_sin_imagenes/` (y, si se corre el RL, `rl_1e-5/`).
+- **Versionado** (lo copia la celda 14): `resultados/multimodal/Toys_and_Games/latentr3_mm/`, con `entrenamiento.json`, `predicciones/{test,test_sin_imagenes}/` (`final_result.json` y `registro.json`) y `analisis.json`.
+

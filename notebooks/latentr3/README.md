@@ -137,6 +137,7 @@ Celdas 7 a 10 del notebook; corren en CPU, con modelos diminutos (2 capas, dimen
   - `sft/trainer/`: checkpoints por época, máximo 2; se borran al terminar. `sft/modelo/`: mejor época. `sft/entrenamiento.json` y `sft/predicciones/test/`.
   - `rl_1e-5/trainer/`: checkpoint cada 200 pasos, máximo 2; se borran al terminar. `rl_1e-5/modelo/`. `rl_1e-5/entrenamiento.json`, `rl_1e-5/predicciones/test/` (LatentR3) y `rl_1e-5/predicciones/test_d3/` (D3 + LatentR3).
   - Tamaños, medidos fuera del notebook, sin output guardado: ~9 GB por checkpoint del SFT y ~3,1 GB por modelo.
+- **Variantes:** `entrenar_sft`, `evaluar_categoria` y `entrenar_rl` aceptan funciones alternativas (dataset, modelo, congelamiento, trainer), y `generar` pasa `item_ids` si los encodings los traen. Los usa LatentR3-SFT + SigLIP ([`../multimodal/README.md`](../multimodal/README.md)). Con los valores por defecto, el comportamiento es el de siempre: V5 y V6 dan lo mismo que antes (2026-11-28, fuera del notebook).
 - **Retomar:** volver a correr la celda. Cada etapa continúa desde su último checkpoint y se salta si `entrenamiento.json` dice que terminó; la evaluación se salta las partes de 256 filas ya escritas.
 - **Otros procesos:** conviene cerrar los kernels de Jupyter de otros notebooks antes de entrenar; el escritorio y otros procesos ocupan ~1,4-1,9 GB de la GPU (medición fuera del notebook, sin output guardado).
 
