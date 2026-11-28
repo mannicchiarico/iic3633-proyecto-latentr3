@@ -12,8 +12,8 @@ ORIGENES = {"checkpoints/bigrec": "resultados/bigrec",
             "colab": "resultados/colab"}
 
 PATRONES = [re.compile(p) for p in [
-    # Frente E: BIGRec y D3 de Games e Instruments, y la validación de la T4 con BIGRec Toys
-    r"^resultados/bigrec/(Video_Games|Musical_Instruments)/predicciones/(bigrec|d3)/(registro|final_result)\.json$",
+    # Frente E: BIGRec y D3 de Games, Instruments y CDs, y la validación de la T4 con BIGRec Toys
+    r"^resultados/bigrec/(Video_Games|Musical_Instruments|CDs_and_Vinyl)/predicciones/(bigrec|d3)/(registro|final_result)\.json$",
     r"^resultados/bigrec/Toys_and_Games/predicciones/bigrec_t4/(registro|final_result)\.json$",
     # Frente M: cobertura (4 datasets), manifiestos de imágenes y embeddings y resultados de SASRec + SigLIP (Toys)
     r"^resultados/multimodal/cobertura/(cobertura_(CDs_and_Vinyl|Musical_Instruments|Toys_and_Games|Video_Games)\.csv"
