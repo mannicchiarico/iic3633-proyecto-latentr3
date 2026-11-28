@@ -31,6 +31,9 @@ MICRO_SFT = 2            # acumulación 64; el batch efectivo sigue en 128
 LR_RL = 1e-5             # de la grilla de attention_grpo.sh. En Toys divergieron 5e-4 (sugerido por el autor para CDs,
                          # issue #2; desde el paso ~100, rl_5e-4/) y 1e-4 (desde el paso ~235, rl_1e-4/), ambos con
                          # una suma acumulada de lr de ~0,013; con 1e-5 la corrida completa suma ~0,0084 (2026-11-25)
+LR_RL_PRUEBA = 5e-5      # segunda corrida en Toys (decisión del usuario, 2026-11-26), también de la grilla de
+                         # attention_grpo.sh: con 1e-5 el RL no cambió las métricas. Con la regla de la suma acumulada
+                         # se rompería hacia el paso ~370; guarda todos los checkpoints en rl_5e-5/ para revisarlos
 NUM_GENERATIONS = 8      # K
 BATCH_RL = 256           # filas por paso de optimización = 32 prompts x 8
 GRUPOS_POR_MICRO = 2     # 2 GPUs simuladas (parche P3): un grupo por GPU de los autores
@@ -263,11 +266,11 @@ def args_sft(salida, micro_batch=MICRO_SFT, checkpointing=True, **extra):
     return TrainingArguments(**base)
 
 
-def config_rl(salida, checkpointing=False, **extra):
+def config_rl(salida, checkpointing=False, lr=LR_RL, **extra):
     """GRPOConfig de train_noise_grpo.py L126-158 con los argumentos de attention_grpo.sh; micro-batch de 2 grupos."""
     import trl
     base = dict(warmup_steps=WARMUP_RL, num_generations=NUM_GENERATIONS, max_prompt_length=512, temperature=1.0,
-                max_completion_length=256, use_vllm=False, learning_rate=LR_RL, beta=0.0, num_iterations=1,
+                max_completion_length=256, use_vllm=False, learning_rate=lr, beta=0.0, num_iterations=1,
                 epsilon=0.2, epsilon_high=0.28, num_train_epochs=1, output_dir=salida,
                 per_device_train_batch_size=MICRO_RL, per_device_eval_batch_size=MICRO_RL, seed=SEED,
                 gradient_accumulation_steps=BATCH_RL // MICRO_RL, lr_scheduler_type="cosine", eval_strategy="no",
@@ -396,12 +399,14 @@ def entrenar_sft(categoria, base, salida, sample_train=-1, sample_valid=-1, micr
 
 # ---------- Etapa 2: LR-GRPO ----------
 
-def entrenar_rl(categoria, base, salida, dir_sft, sample=-1, checkpointing=False, borrar_intermedios=True):
+def entrenar_rl(categoria, base, salida, dir_sft, sample=-1, checkpointing=False, borrar_intermedios=True, lr=LR_RL,
+                guardar_checkpoints=False):
     """LR-GRPO de LatentR3 (train_noise_grpo.py con el trainer parcheado, 2 GPUs simuladas) desde el modelo del SFT.
 
     Solo entrena LatentRATT. Retoma desde el último checkpoint (cada 200 pasos) y se salta si ya terminó. Guarda en
     `salida`: `trainer/` (se borra al final), `modelo/` (el modelo tras 1 época, como los autores) y
-    `entrenamiento.json` con la recompensa por paso.
+    `entrenamiento.json` con la recompensa por paso. Con guardar_checkpoints=True conserva todos los checkpoints
+    (sin save_total_limit) y no borra `trainer/`, para revisarlos o evaluarlos después.
     """
     import transformers
     import trl
@@ -423,7 +428,8 @@ def entrenar_rl(categoria, base, salida, dir_sft, sample=-1, checkpointing=False
     cronometro = _cronometro()
     trainer = NoiseGRPORecTrainer(
         prefix_allowed_tokens_fn=lambda _, ids: trie.get(get_hash(ids), []), model=modelo,
-        reward_funcs=[recompensa_exact_match], args=config_rl(dir_trainer, checkpointing=checkpointing),
+        reward_funcs=[recompensa_exact_match], args=config_rl(dir_trainer, checkpointing=checkpointing, lr=lr,
+                       **({"save_total_limit": None} if guardar_checkpoints else {})),
         train_dataset=a_hf(train), eval_dataset=None, processing_class=tokenizer, callbacks=[cronometro])
     modelo.config.use_cache = False   # L163
 
@@ -441,7 +447,7 @@ def entrenar_rl(categoria, base, salida, dir_sft, sample=-1, checkpointing=False
     pasos = np.diff(cronometro.marcas)
     historial = [h for h in trainer.state.log_history if "recompensa" in h]
     registro = {
-        "categoria": categoria, "etapa": "rl", "terminado": True, "lr": LR_RL, "dir_sft": dir_sft,
+        "categoria": categoria, "etapa": "rl", "terminado": True, "lr": lr, "dir_sft": dir_sft,
         "pasos_totales": trainer.state.global_step, "pasos_esta_sesion": trainer.state.global_step - paso_inicial,
         "filas_train": len(train), "parametros_entrenables": entrenables, "segundos_esta_sesion": segundos,
         "s_por_paso_mediana": float(np.median(pasos[1:])) if len(pasos) > 1 else None,
@@ -456,7 +462,7 @@ def entrenar_rl(categoria, base, salida, dir_sft, sample=-1, checkpointing=False
     _escribir(os.path.join(salida, "entrenamiento.json"), registro)
     del trainer, modelo
     torch.cuda.empty_cache()
-    if borrar_intermedios:
+    if borrar_intermedios and not guardar_checkpoints:
         shutil.rmtree(dir_trainer, ignore_errors=True)
     return registro
 
@@ -567,13 +573,118 @@ def evaluar_categoria(categoria, base, dir_modelo, dir_pred, batch_size, length_
     return final
 
 
-def rutas(salida_categoria):
-    """Carpetas de un dataset dentro de checkpoints/latentr3/<categoría>/."""
+def rutas(salida_categoria, lr_rl=LR_RL):
+    """Carpetas de un dataset dentro de checkpoints/latentr3/<categoría>/; la del RL depende del lr."""
     sft = os.path.join(salida_categoria, "sft")
-    rl = os.path.join(salida_categoria, "rl_" + f"{LR_RL:.0e}".replace("e-0", "e-"))   # rl_1e-5
+    rl = os.path.join(salida_categoria, "rl_" + f"{lr_rl:.0e}".replace("e-0", "e-"))   # rl_1e-5, rl_5e-5
     return {"sft": sft, "modelo_sft": os.path.join(sft, "modelo"), "pred_sft": os.path.join(sft, "predicciones", "test"),
             "rl": rl, "modelo_rl": os.path.join(rl, "modelo"), "pred_rl": os.path.join(rl, "predicciones", "test"),
             "pred_d3": os.path.join(rl, "predicciones", "test_d3")}
+
+
+# ---------- Diagnóstico del RL ----------
+
+@torch.no_grad()
+def diagnosticar_ruido(categoria, base, dir_sft, checkpoints=None, n_prompts=48, sigmas=(0.0, 1.5, 15.0, 150.0),
+                       seed=0):
+    """Mide cuánto cambia la recompensa del RL (−PPL del objetivo, Eq. 6) con el ruido del token latente (Eq. 5).
+
+    Replica _puntuar_grupo de autores/grpo_trainer.py sin el trainer: cada prompt de `train` va en un grupo de
+    NUM_GENERATIONS copias, colacionado como en el RL (pad_to_multiple_of=8, relleno a la izquierda), con la fila 0
+    sin ruido. Para cada sigma compara la variación dentro del grupo (lo que el ruido aporta a la ventaja) con la
+    variación entre prompts. También mide la norma del token latente, la recompensa al reemplazarlo (¿el LLM lo usa?)
+    y, para cada checkpoint de `checkpoints` ({nombre: ruta a model.safetensors}), la recompensa sin ruido con su
+    LatentRATT (el RL congela el LLM, así que solo cambia esa capa). Solo lee modelos; devuelve un dict.
+    """
+    from transformers import DataCollatorForSeq2Seq
+    from safetensors import safe_open
+    import torch.nn.functional as F
+    assert sigmas[0] == 0, "el primer sigma debe ser 0: da la variación numérica con 8 copias idénticas"
+    torch.manual_seed(seed)
+    tok = para_generar(tokenizer_con_latente(dir_sft))
+    datos = dataset_rl(tok, buscar_archivo(base, "train", categoria), categoria, sample=n_prompts)
+    colacion = DataCollatorForSeq2Seq(tok, pad_to_multiple_of=8, return_tensors="pt", padding=True)
+    modelo = LatentModel.from_pretrained(dir_sft, torch_dtype=torch.bfloat16).to(device).eval()
+    modelo.attention.end_k = -1
+    id_latente = modelo.model.embed_tokens.num_embeddings - 1
+    k = NUM_GENERATIONS
+    filas = torch.arange(k, device=device)
+
+    def grupo(fila):
+        g = {c: v.to(device) for c, v in colacion([fila] * k).items()}
+        ids, mascara = g["input_ids"], g["attention_mask"]
+        n = int((g["labels"][0] != -100).sum())                       # labels_length (L111)
+        emb = modelo.generate_embs(ids, mascara)
+        return ids, mascara, n, emb, torch.nonzero(ids == id_latente)[:, 1]
+
+    def recompensa(ids, emb, mascara, n):
+        # my_get_per_token_logps (logits_to_keep = n + 1, sin el último) y la recompensa de L156
+        logits = modelo(input_ids=None, inputs_embeds=emb, attention_mask=mascara, use_cache=False,
+                        logits_to_keep=n + 1).logits[:, :-1, :][:, -n:]
+        lp = torch.gather(F.log_softmax(logits.float(), -1), 2, ids[:, -n:].unsqueeze(-1)).squeeze(-1)
+        return (-(-lp.sum(-1) / n).exp()).cpu().numpy()
+
+    por_sigma = {s: [] for s in sigmas}
+    reemplazos = ["latente nulo", "embedding promedio del prompt", "embedding crudo de <|Thought|>"]
+    ablacion = {r: [] for r in reemplazos}
+    normas_latente, normas_token = [], []
+    inicio = time.time()
+    torch.cuda.reset_peak_memory_stats()
+    for i in range(len(datos)):
+        ids, mascara, n, emb, pos = grupo(datos[i])
+        normas_latente.append(emb[0, pos[0]].float().norm().item())
+        prompt = mascara[0].bool().clone()
+        prompt[pos[0]] = False
+        normas_token.append(emb[0][prompt].float().norm(dim=-1).median().item())
+        for s in sigmas:
+            e = emb.clone()
+            ruido = torch.randn(k, emb.size(-1), device=device).mul(s)
+            ruido[0] = 0
+            e[filas, pos] += ruido.to(e.dtype)
+            por_sigma[s].append(recompensa(ids, e, mascara, n))
+        vectores = [torch.zeros_like(emb[0, pos[0]]), emb[0][prompt].mean(0), modelo.model.embed_tokens.weight[id_latente]]
+        for nombre, v in zip(reemplazos, vectores):
+            e = emb[:1].clone()
+            e[0, pos[0]] = v.to(e.dtype)
+            ablacion[nombre].append(recompensa(ids[:1], e, mascara[:1], n)[0])
+
+    s1 = np.array([r[0] for r in por_sigma[sigmas[0]]])   # fila 0 sin ruido (igual para todo sigma)
+    entre = float(s1.std())
+    resultado = {"categoria": categoria, "n_prompts": len(datos), "num_generations": k, "seed": seed,
+                 "norma_latente_mediana": float(np.median(normas_latente)),
+                 "norma_token_prompt_mediana": float(np.median(normas_token)),
+                 "recompensa_sin_ruido_media": float(s1.mean()), "desv_entre_prompts": entre, "sigma": {},
+                 "ablacion": {}, "checkpoints": {}}
+    for s in sigmas:
+        r = np.stack(por_sigma[s])
+        resultado["sigma"][str(s)] = {
+            "norma_ruido_esperada": float(s * math.sqrt(emb.size(-1))),
+            "desv_dentro_del_grupo": float(r.std(1).mean()),
+            "con_ruido_menos_sin_ruido": float((r[:, 1:].mean(1) - r[:, 0]).mean()),
+            "dentro_sobre_entre": float(r.std(1).mean() / entre)}
+    for nombre, v in ablacion.items():
+        resultado["ablacion"][nombre] = {"recompensa_media": float(np.mean(v)),
+                                         "diferencia_media": float(np.mean(np.array(v) - s1))}
+    pesos_sft = {c: v.detach().clone() for c, v in modelo.attention.state_dict().items()}
+    for nombre, ruta in (checkpoints or {}).items():
+        with safe_open(ruta, "pt") as f:
+            pesos = {c[len("attention."):]: f.get_tensor(c) for c in f.keys() if c.startswith("attention.")}
+        modelo.attention.load_state_dict({c: pesos[c].to(v.dtype) for c, v in pesos_sft.items()})
+        rs, ns = [], []
+        for i in range(len(datos)):
+            ids, mascara, n, emb, pos = grupo(datos[i])
+            ns.append(emb[0, pos[0]].float().norm().item())
+            rs.append(recompensa(ids[:1], emb[:1], mascara[:1], n)[0])
+        rs = np.array(rs)
+        resultado["checkpoints"][nombre] = {
+            "norma_latente_mediana": float(np.median(ns)), "recompensa_media": float(rs.mean()),
+            "recompensa_mediana": float(np.median(rs)), "prompts_peores_que_sft": int((rs < s1).sum()),
+            "ppl_max": float(-rs.min())}
+    resultado["segundos"] = time.time() - inicio
+    resultado["memoria_max_gb"] = torch.cuda.max_memory_allocated() / 2**30
+    del modelo
+    torch.cuda.empty_cache()
+    return resultado
 
 
 # ---------- Verificaciones sin GPU ----------
